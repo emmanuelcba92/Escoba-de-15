@@ -4,28 +4,28 @@ import Card from './Card';
 import { Play, Layers, ShieldCheck, Wifi, Loader2, Wind } from 'lucide-react';
 
 const Deck = ({ count }) => (
-    <div className="flex flex-col items-center gap-2 group">
+    <div className="flex flex-col items-center gap-1 group">
         <div className="relative">
             {[...Array(Math.min(3, Math.ceil(count / 10)))].map((_, i) => (
-                <div key={i} className="absolute inset-0 bg-blue-900/40 rounded-lg border border-white/10" style={{ transform: `translate(${-i * 2}px, ${-i * 2}px)` }} />
+                <div key={i} className="absolute inset-0 bg-blue-900/40 rounded-lg border border-white/10" style={{ transform: `translate(${-i * 1.5}px, ${-i * 1.5}px)` }} />
             ))}
-            <div className="relative w-16 h-24 bg-white rounded-lg shadow-2xl overflow-hidden border-2 border-white/20">
+            <div className="relative w-10 h-14 sm:w-16 sm:h-24 bg-white rounded-lg shadow-2xl overflow-hidden border-2 border-white/20">
                 <div className="absolute inset-0 bg-blue-900 flex items-center justify-center">
                     <div className="w-full h-full opacity-20" style={{ backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`, backgroundSize: '8px 8px' }} />
-                    <Layers className="text-white/20 size-8" />
+                    <Layers className="text-white/20 size-6 sm:size-8" />
                 </div>
             </div>
-            <div className="absolute -bottom-2 -right-2 bg-yellow-500 text-green-950 font-black text-[10px] size-6 rounded-full flex items-center justify-center shadow-lg ring-2 ring-green-900">{count}</div>
+            <div className="absolute -bottom-1 -right-1 bg-yellow-500 text-green-950 font-black text-[8px] sm:text-[10px] size-5 sm:size-6 rounded-full flex items-center justify-center shadow-lg ring-2 ring-green-900">{count}</div>
         </div>
-        <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Mazo</span>
+        <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-white/20">Mazo</span>
     </div>
 );
 
 const PlayerHand = ({ player, isCurrent, onCardClick, selectedHandCard, isPlayerTurn, hideCards }) => {
     const isBot = player.isBot;
     return (
-        <div className="flex flex-col items-center space-y-3">
-            <div className="flex -space-x-8">
+        <div className="flex flex-col items-center space-y-2 sm:space-y-3">
+            <div className="flex -space-x-10 sm:-space-x-8">
                 {player.hand.map((card, i) => {
                     const isSelected = selectedHandCard?.id === card.id;
                     return (
@@ -34,12 +34,12 @@ const PlayerHand = ({ player, isCurrent, onCardClick, selectedHandCard, isPlayer
                             layout
                             initial={{ scale: 0, opacity: 0 }}
                             animate={{
-                                scale: isSelected ? 1.1 : 1,
+                                scale: isSelected ? 1.05 : 1,
                                 opacity: 1,
-                                y: isSelected ? -20 : 0,
+                                y: isSelected ? -15 : 0,
                                 zIndex: isSelected ? 100 : i
                             }}
-                            whileHover={isPlayerTurn && !hideCards && !isBot ? { y: -10, zIndex: 110 } : {}}
+                            whileHover={isPlayerTurn && !hideCards && !isBot ? { y: -5, zIndex: 110 } : {}}
                             onClick={() => isPlayerTurn && !hideCards && !isBot && onCardClick(card)}
                             className="cursor-pointer"
                         >
@@ -48,7 +48,7 @@ const PlayerHand = ({ player, isCurrent, onCardClick, selectedHandCard, isPlayer
                     );
                 })}
             </div>
-            <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase border transition-all ${isCurrent ? 'bg-yellow-500 border-yellow-400 text-green-950 shadow-lg' : 'glass-panel text-white/40 border-white/5'}`}>
+            <div className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[8px] sm:text-[10px] font-bold tracking-widest uppercase border transition-all ${isCurrent ? 'bg-yellow-500 border-yellow-400 text-green-950 shadow-lg' : 'glass-panel text-white/40 border-white/5'}`}>
                 {player.name}
             </div>
         </div>
@@ -100,20 +100,20 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
     };
 
     const containerClasses = {
-        bottom: "absolute bottom-10 left-1/2 -translate-x-1/2",
-        top: "absolute top-10 left-1/2 -translate-x-1/2",
-        left: "absolute top-1/2 left-10 -translate-y-1/2 rotate-90",
-        right: "absolute top-1/2 right-10 -translate-y-1/2 -rotate-90",
-        "top-right": "absolute top-10 right-20",
-        "top-left": "absolute top-10 left-20",
+        bottom: "absolute bottom-4 sm:bottom-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
+        top: "absolute top-4 sm:top-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
+        left: "absolute top-1/2 left-2 sm:left-10 -translate-y-1/2 rotate-90",
+        right: "absolute top-1/2 right-2 sm:right-10 -translate-y-1/2 -rotate-90",
+        "top-right": "absolute top-4 sm:top-10 right-4 sm:right-20",
+        "top-left": "absolute top-4 sm:top-10 left-4 sm:left-20",
     };
 
     // Verificación de suma 15 solo en mesa para el botón de soplo
     const tableSumIs15 = selectedTableCards.length >= 2 && selectedTableCards.reduce((acc, c) => acc + c.numericValue, 0) === 15;
 
     return (
-        <div className="flex-1 h-full flex flex-col items-center justify-between p-8 relative felt-bg overflow-hidden text-white">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[600px] border-[1px] border-white/5 rounded-full pointer-events-none blur-3xl opacity-50" />
+        <div className="flex-1 h-full flex flex-col items-center justify-between p-4 sm:p-8 relative felt-bg overflow-hidden text-white">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[900px] h-[300px] sm:h-[600px] border-[1px] border-white/5 rounded-full pointer-events-none blur-3xl opacity-50" />
 
             {/* Waiting for opponent screen */}
             <AnimatePresence>
@@ -188,11 +188,18 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                     </AnimatePresence>
                 </div>
 
-                <div className="h-24 flex items-center gap-4">
+                <div className="h-16 sm:h-24 flex items-center gap-4">
                     <AnimatePresence mode="wait">
                         {selectedHandCard && isOurTurn && !privacyOverlay && (
-                            <motion.button key="play-btn" initial={{ scale: 0.5, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.5, opacity: 0, y: 20 }} onClick={onPlayMove} className="px-16 py-5 bg-yellow-500 text-green-950 font-black rounded-full shadow-2xl flex items-center gap-4 tracking-[0.2em] text-sm ring-4 ring-yellow-400/20">
-                                <Play className="fill-green-950 size-4" /> CONFIRMAR JUGADA
+                            <motion.button
+                                key="play-btn"
+                                initial={{ scale: 0.5, opacity: 0, y: 20 }}
+                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                exit={{ scale: 0.5, opacity: 0, y: 20 }}
+                                onClick={onPlayMove}
+                                className="px-8 sm:px-16 py-3 sm:py-5 bg-yellow-500 text-green-950 font-black rounded-full shadow-2xl flex items-center gap-3 sm:gap-4 tracking-[0.2em] text-[10px] sm:text-sm ring-4 ring-yellow-400/20"
+                            >
+                                <Play className="fill-green-950 size-3 sm:size-4" /> CONFIRMAR
                             </motion.button>
                         )}
 
@@ -212,7 +219,7 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
             </div>
 
             {deckSize > 0 && (
-                <div className="absolute top-1/2 right-40 -translate-y-1/2 opacity-40">
+                <div className="absolute top-1/2 right-4 sm:right-40 -translate-y-1/2 opacity-40 scale-75 sm:scale-100">
                     <Deck count={deckSize} />
                 </div>
             )}

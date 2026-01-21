@@ -49,8 +49,8 @@ const Card = ({ card, onClick, isSelected, isPlayable, hidden }) => {
     return (
         <div
             onClick={() => onClick && onClick(card)}
-            className={`relative w-24 h-36 rounded-lg shadow-xl ${isSelected ? 'ring-4 ring-yellow-400' : ''
-                } bg-white overflow-hidden border-2 border-white/10 select-none group pointer-events-auto`}
+            className={`relative w-16 h-24 sm:w-20 sm:h-28 md:w-24 md:h-36 rounded-lg shadow-xl ${isSelected ? 'ring-4 ring-yellow-400' : ''
+                } bg-white overflow-hidden border-2 border-white/10 select-none group pointer-events-auto transition-all`}
         >
             {/* Hidden internal label */}
             <div className="sr-only">{value} of {suit}</div>
