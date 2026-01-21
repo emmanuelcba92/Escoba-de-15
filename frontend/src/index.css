@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --felt-green: #064e3b;
+  --felt-green-light: #065f46;
+  --gold: #fbbf24;
+}
+
+body {
+  margin: 0;
+  font-family: 'Outfit', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--felt-green);
+  color: white;
+  overflow: hidden;
+}
+
+/* Green Felt Background with Texture */
+.felt-bg {
+  background: radial-gradient(circle at center, var(--felt-green-light) 0%, var(--felt-green) 100%);
+  position: relative;
+}
+
+.felt-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* Glassmorphism Components */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-8 py-3 bg-yellow-500 hover:bg-yellow-400 text-green-950 font-bold rounded-xl shadow-lg transform transition-all active:scale-95 hover:-translate-y-1;
+  }
+
+  .btn-secondary {
+    @apply px-8 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl border border-white/20 backdrop-blur-md transition-all active:scale-95;
+  }
+}
+
+/* Animations */
+@keyframes pulse-gold {
+
+  0%,
+  100% {
+    border-color: rgba(251, 191, 36, 0.5);
+  }
+
+  50% {
+    border-color: rgba(251, 191, 36, 1);
+  }
+}
+
+.active-turn-ring {
+  animation: pulse-gold 2s infinite;
+}
+
+.text-glow {
+  text-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+}
