@@ -1,39 +1,24 @@
-# Guía de Despliegue - Escoba de 15
+# Guía de Despliegue - Escoba de 15 (Versión Supabase)
 
-## 1. Frontend (Vercel)
+## 1. Configuración de Supabase
+El juego ahora usa Supabase Realtime para el multijugador. No necesitas un servidor adicional.
 
-La carpeta `frontend` contiene la aplicación React. Para desplegar en Vercel:
+1.  Crea un proyecto en [Supabase](https://supabase.com/).
+2.  Obtén la `URL` y la `Anon Key` desde *Project Settings -> API*.
+3.  En Vercel, deberás configurar estas variables de entorno:
+    *   `VITE_SUPABASE_URL`
+    *   `VITE_SUPABASE_ANON_KEY`
 
-1.  Creá un repositorio en GitHub y subí todo el código.
-2.  Importá el proyecto en [Vercel](https://vercel.com/).
-3.  Configurá el **Root Directory** a `frontend`.
-4.  El **Build Command** es `npm run build`.
-5.  El **Output Directory** es `dist`.
-6.  Hacé click en **Deploy**.
+## 2. Despliegue en Vercel
 
-## 2. Backend (Render / Railway)
+1.  Sube el código a GitHub.
+2.  Importa el proyecto en Vercel.
+3.  **Root Directory**: Pon `frontend`.
+4.  **Environment Variables**: Agrega las dos claves de Supabase mencionadas arriba.
+5.  **Build Command**: `npm run build`.
+6.  **Output Directory**: `dist`.
 
-El modo multijugador requiere un servidor Node.js activo para los WebSockets.
-
-### Opción A: Render (Recomendado)
-
-1.  Creá una cuenta en [Render.com](https://render.com/).
-2.  Creá un nuevo **Web Service**.
-3.  Conectá tu repositorio de GitHub.
-4.  Configurá:
-    *   **Root Directory**: `backend`
-    *   **Build Command**: `npm install`
-    *   **Start Command**: `node index.js`
-5.  Desplegá. Render te dará una URL (ej: `https://mi-escoba-backend.onrender.com`).
-
-### Configuración Final
-
-Una vez tengas la URL del backend, necesitás actualizar el frontend para que se conecte a ella.
-1.  En `frontend/src/game/constants.js` o en un archivo `.env`, definí la URL del servidor.
-2.  (Nota: En el código actual, la lógica multijugador es una base. Deberás implementar la conexión Socket.io en el cliente usando `io(URL)`).
-
-## Estructura de Archivos
-
-*   `frontend/src/game/engine.js`: Lógica del juego (Reglas, Puntaje).
-*   `frontend/src/game/ai.js`: Inteligencia Artificial.
-*   `backend/index.js`: Servidor WebSocket.
+## 3. ¿Por qué Supabase?
+- **Sin retardos**: A diferencia de Render, Supabase no se apaga. Puedes jugar al instante con tu sobrino.
+- **Estabilidad**: La conexión Realtime es más robusta para móviles.
+- **Escalabilidad**: Soporta muchos jugadores simultáneos sin configurar nada más.

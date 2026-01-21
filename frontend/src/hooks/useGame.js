@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createDeck, shuffleDeck, checkSum15, calculateMatchPoints, findInitialEscobas, checkTableSum15 } from '../game/engine';
 import { findBestMove } from '../game/ai';
-import { io } from 'socket.io-client';
+import { createClient } from '@supabase/supabase-js';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `http://${window.location.hostname}:3001`;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const SOUNDS = {
     play: 'https://assets.mixkit.co/active_storage/sfx/2021/2021-preview.mp3', // Vuelta de página rápida (libro)
@@ -48,7 +50,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         return saved ? JSON.parse(saved) : { wins: 0, losses: 0, totalEscobas: 0 };
     });
 
-    const socketRef = useRef(null);
+    const channelRef = useRef(null);
     const [playerRole, setPlayerRole] = useState(null); // 'host', 'guest'
     const [myPlayerIdx, setMyPlayerIdx] = useState(0);
     const [waitingForOpponent, setWaitingForOpponent] = useState(gameMode === 'multi');
@@ -101,48 +103,71 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         setPlayers(createPlayersArr());
     }, [playerCount, gameMode, playerName]);
 
+    // Supabase Multiplayer Setup
     useEffect(() => {
         if (gameMode === 'multi' && roomId) {
-            socketRef.current = io(SOCKET_URL);
-            socketRef.current.emit('join_room', roomId);
+            const channel = supabase.channel(`room_${roomId}`, {
+                config: { presence: { key: playerName } }
+            });
 
-            socketRef.current.on('room_info', (info) => {
-                setPlayerRole(info.role);
-                if (info.role === 'guest') {
-                    setMyPlayerIdx(info.playerIndex);
+            channel
+                .on('presence', { event: 'sync' }, () => {
+                    const state = channel.presenceState();
+                    const playersInRoom = Object.keys(state);
+
+                    // First player to join is the host
+                    if (playersInRoom[0] === playerName) {
+                        setPlayerRole('host');
+                        setMyPlayerIdx(0);
+                    } else {
+                        setPlayerRole('guest');
+                        setMyPlayerIdx(1); // Simple 2-player logic for now
+                        setWaitingForOpponent(false);
+                    }
+                })
+                .on('presence', { event: 'join' }, ({ key }) => {
+                    if (key !== playerName) {
+                        setWaitingForOpponent(false);
+                        // If I'm host and someone joined, I start the round
+                        // Using a ref-like check to avoid state stale closure
+                    }
+                })
+                .on('broadcast', { event: 'init_game' }, ({ payload }) => {
+                    setDeck(payload.deck);
+                    setTable(payload.table);
+                    setPlayers(payload.players);
+                    setCurrentPlayerIdx(payload.currentPlayerIdx);
+                    setDealerIdx(payload.dealerIdx);
+                    setGameLog(prev => ["Partida sincronizada (Supabase).", ...prev]);
                     setWaitingForOpponent(false);
-                }
-            });
+                })
+                .on('broadcast', { event: 'play_move' }, ({ payload }) => {
+                    processMove(payload.playerIdx, payload.move.cardPlayed, payload.move.cardsCaptured, payload.move.isDiscard, true);
+                })
+                .on('broadcast', { event: 'soplo_made' }, ({ payload }) => {
+                    processSoplo(payload.playerIdx, payload.cardsCaptured, true);
+                })
+                .subscribe(async (status) => {
+                    if (status === 'SUBSCRIBED') {
+                        await channel.track({ online_at: new Date().toISOString() });
+                    }
+                });
 
-            socketRef.current.on('player_joined', (data) => {
-                if (playerRole === 'host') {
-                    setWaitingForOpponent(false);
-                    setTimeout(() => startRoundMulti(), 500);
-                }
-            });
-
-            socketRef.current.on('init_game_state', (data) => {
-                setDeck(data.deck);
-                setTable(data.table);
-                setPlayers(data.players);
-                setCurrentPlayerIdx(data.currentPlayerIdx);
-                setDealerIdx(data.dealerIdx);
-                setGameLog(prev => ["Conectado. Partida sincronizada.", ...prev]);
-            });
-
-            socketRef.current.on('opponent_move', (data) => {
-                processMove(data.playerIdx, data.move.cardPlayed, data.move.cardsCaptured, data.move.isDiscard, true);
-            });
-
-            socketRef.current.on('soplo_made', (data) => {
-                processSoplo(data.playerIdx, data.cardsCaptured, true);
-            });
+            channelRef.current = channel;
 
             return () => {
-                if (socketRef.current) socketRef.current.disconnect();
+                channel.unsubscribe();
             };
         }
-    }, [gameMode, roomId, playerRole, playerCount, playerName]);
+    }, [gameMode, roomId, playerName]);
+
+    // Host starting round effect
+    useEffect(() => {
+        if (gameMode === 'multi' && playerRole === 'host' && !waitingForOpponent && deck.length === 0) {
+            // Only start if we haven't started yet
+            setTimeout(() => startRoundMulti(), 500);
+        }
+    }, [playerRole, waitingForOpponent, gameMode]);
 
     const startRoundMulti = () => {
         if (playerRole !== 'host') return;
@@ -171,13 +196,16 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                 initialMsgs.push(`¡Escoba de Mano! ${nextPlayers[dealerIdx].name} hizo ${escobas.length}.`);
             }
 
-            socketRef.current.emit('sync_game_state', {
-                roomId,
-                deck: newDeck,
-                table: currentTable,
-                players: nextPlayers,
-                currentPlayerIdx: pIdx,
-                dealerIdx
+            channelRef.current.send({
+                type: 'broadcast',
+                event: 'init_game',
+                payload: {
+                    deck: newDeck,
+                    table: currentTable,
+                    players: nextPlayers,
+                    currentPlayerIdx: pIdx,
+                    dealerIdx
+                }
             });
 
             setDeck(newDeck);
@@ -246,10 +274,13 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
 
     const processMove = (playerIdx, cardPlayed, cardsCaptured, isDiscard = false, isRemote = false) => {
         if (gameMode === 'multi' && playerIdx === myPlayerIdx && !isRemote) {
-            socketRef.current.emit('play_move', {
-                roomId,
-                playerIdx: myPlayerIdx,
-                move: { cardPlayed, cardsCaptured, isDiscard }
+            channelRef.current.send({
+                type: 'broadcast',
+                event: 'play_move',
+                payload: {
+                    playerIdx: myPlayerIdx,
+                    move: { cardPlayed, cardsCaptured, isDiscard }
+                }
             });
         }
 
@@ -316,7 +347,11 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
 
     const processSoplo = (playerIdx, cardsCaptured, isRemote = false) => {
         if (gameMode === 'multi' && !isRemote) {
-            socketRef.current.emit('soplo_made', { roomId, playerIdx, cardsCaptured });
+            channelRef.current.send({
+                type: 'broadcast',
+                event: 'soplo_made',
+                payload: { playerIdx, cardsCaptured }
+            });
         }
 
         setPlayers(prev => {
