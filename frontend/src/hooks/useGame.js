@@ -7,7 +7,7 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `http://${window.location.
 
 const SOUNDS = {
     play: 'https://assets.mixkit.co/active_storage/sfx/2021/2021-preview.mp3', // Vuelta de página rápida (libro)
-    capture: 'https://assets.mixkit.co/active_storage/sfx/2006/2006-preview.mp3', // Deslizamiento de carta (antiguo play)
+    capture: 'https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3', // Tomar carta / Alce normal
     escoba: 'https://assets.mixkit.co/active_storage/sfx/2001/2001-preview.mp3'
 };
 
