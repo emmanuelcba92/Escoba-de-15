@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from './Card';
-import { Play, Layers, ShieldCheck, Wifi, Loader2, Wind } from 'lucide-react';
+import { Play, Layers, ShieldCheck, Wifi, Loader2, Wind, History, X } from 'lucide-react';
 
 const Deck = ({ count }) => (
     <div className="flex flex-col items-center gap-1 group">
@@ -60,6 +60,7 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
 
     const [privacyOverlay, setPrivacyOverlay] = useState(false);
     const [privacyTimer, setPrivacyTimer] = useState(10);
+    const [showLogDrawer, setShowLogDrawer] = useState(false);
 
     const isOurTurn = gameMode === 'multi' ? (currentPlayerIdx === myPlayerIdx) : !players[currentPlayerIdx]?.isBot;
 
@@ -100,7 +101,7 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
     };
 
     const containerClasses = {
-        bottom: "absolute bottom-4 sm:bottom-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
+        bottom: "absolute bottom-16 sm:bottom-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
         top: "absolute top-4 sm:top-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
         left: "absolute top-1/2 left-2 sm:left-10 -translate-y-1/2 rotate-90",
         right: "absolute top-1/2 right-2 sm:right-10 -translate-y-1/2 -rotate-90",
@@ -114,6 +115,14 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
     return (
         <div className="flex-1 h-full flex flex-col items-center justify-between p-4 sm:p-8 relative felt-bg overflow-hidden text-white">
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] sm:w-[900px] h-[300px] sm:h-[600px] border-[1px] border-white/5 rounded-full pointer-events-none blur-3xl opacity-50" />
+
+            {/* Mobile Header: Timer & Global Score */}
+            <div className="lg:hidden absolute top-4 right-4 flex items-center gap-3 z-50">
+                <div className="glass-panel px-3 py-1.5 rounded-full flex items-center gap-2 border-white/10">
+                    <div className={`size-2 rounded-full animate-pulse ${game.timeLeft < 10 ? 'bg-red-500' : 'bg-yellow-500'}`} />
+                    <span className="text-xs font-black tabular-nums">{game.timeLeft}s</span>
+                </div>
+            </div>
 
             {/* Waiting for opponent screen */}
             <AnimatePresence>
@@ -159,17 +168,25 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                 )}
             </AnimatePresence>
 
-            {/* Players Hands */}
+            {/* Players Hands and Scores in Mobile */}
             {players.map((p, i) => (
                 <div key={p.id} className={`${containerClasses[getPlayerPos(i)]} z-30`}>
-                    <PlayerHand
-                        player={p}
-                        isCurrent={currentPlayerIdx === i}
-                        isPlayerTurn={currentPlayerIdx === i}
-                        onCardClick={onHandCardClick}
-                        selectedHandCard={currentPlayerIdx === i ? selectedHandCard : null}
-                        hideCards={privacyOverlay || (gameMode === 'local' && currentPlayerIdx !== i) || (gameMode === 'multi' && i !== myPlayerIdx)}
-                    />
+                    <div className="relative group">
+                        {/* Score bubble for mobile */}
+                        <div className="lg:hidden absolute -top-8 left-1/2 -translate-x-1/2 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1.5 whitespace-nowrap">
+                            <span className="text-[8px] font-black uppercase text-white/60">{p.score} pts</span>
+                            <div className="w-[1px] h-2 bg-white/10" />
+                            <span className="text-[8px] font-medium text-yellow-500">{p.escobas} ✨</span>
+                        </div>
+                        <PlayerHand
+                            player={p}
+                            isCurrent={currentPlayerIdx === i}
+                            isPlayerTurn={currentPlayerIdx === i}
+                            onCardClick={onHandCardClick}
+                            selectedHandCard={currentPlayerIdx === i ? selectedHandCard : null}
+                            hideCards={privacyOverlay || (gameMode === 'local' && currentPlayerIdx !== i) || (gameMode === 'multi' && i !== myPlayerIdx)}
+                        />
+                    </div>
                 </div>
             ))}
 
@@ -223,6 +240,54 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                     <Deck count={deckSize} />
                 </div>
             )}
+
+            {/* Mobile Log Drawer Trigger */}
+            <div className="lg:hidden absolute bottom-6 right-6 z-50">
+                <button
+                    onClick={() => setShowLogDrawer(true)}
+                    className="size-10 bg-white/10 backdrop-blur-md rounded-full border border-white/20 flex items-center justify-center text-white/60 hover:text-white"
+                >
+                    <History size={20} />
+                </button>
+            </div>
+
+            {/* Bottom-to-Top Log Drawer */}
+            <AnimatePresence>
+                {showLogDrawer && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowLogDrawer(false)}
+                            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[150]"
+                        />
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="lg:hidden fixed bottom-0 left-0 right-0 h-[60vh] bg-green-950/90 backdrop-blur-2xl rounded-t-[40px] border-t border-white/10 z-[160] p-8 flex flex-col"
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xs font-black uppercase tracking-widest text-white/40 flex items-center gap-2">
+                                    <History size={14} /> Historial de Partida
+                                </h3>
+                                <button onClick={() => setShowLogDrawer(false)} className="size-8 flex items-center justify-center bg-white/5 rounded-full">
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide pb-8">
+                                {game.gameLog.map((log, i) => (
+                                    <div key={i} className={`text-sm p-4 rounded-2xl border ${i === 0 ? 'bg-white/10 border-white/20 text-white font-medium' : 'border-white/5 text-white/30'}`}>
+                                        {log}
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
