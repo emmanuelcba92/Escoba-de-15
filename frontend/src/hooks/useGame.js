@@ -117,21 +117,25 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                     const playersInRoom = Object.keys(state);
                     console.log('Players in room:', playersInRoom);
 
+                    if (playersInRoom.length === 0) return;
+
                     // First player alphabetically is the host
-                    const sortedPlayers = playersInRoom.sort();
+                    const sortedPlayers = [...playersInRoom].sort();
                     const isHost = sortedPlayers[0] === playerName;
+                    const myIdx = sortedPlayers.indexOf(playerName);
+
                     setPlayerRole(isHost ? 'host' : 'guest');
-                    setMyPlayerIdx(sortedPlayers.indexOf(playerName));
+                    setMyPlayerIdx(myIdx);
 
                     // When we have 2 players, the host starts the game
                     if (playersInRoom.length >= 2) {
                         setWaitingForOpponent(false);
 
                         // Only host initializes the game, and only once
-                        if (isHost && deck.length === 0 && !gameInitializedRef.current) {
+                        if (isHost && !gameInitializedRef.current) {
                             gameInitializedRef.current = true;
-                            console.log('Host starting game...');
-                            setTimeout(() => startRoundMulti(), 500);
+                            console.log('Host starting game with players:', sortedPlayers);
+                            setTimeout(() => startRoundMulti(sortedPlayers, channel), 500);
                         }
                     } else {
                         setWaitingForOpponent(true);
@@ -168,51 +172,61 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         }
     }, [gameMode, roomId, playerName]);
 
-    const startRoundMulti = () => {
-        if (playerRole !== 'host') return;
+    const startRoundMulti = (playerNames, channel) => {
+        console.log('startRoundMulti called with:', playerNames);
+
+        // Create players with real names from Supabase presence
+        const realPlayers = playerNames.map((name, i) => ({
+            id: `p${i + 1}`,
+            name: name,
+            hand: [],
+            capturedCards: [],
+            escobas: 0,
+            score: 0,
+            isBot: false
+        }));
 
         let newDeck = shuffleDeck(createDeck());
         const initialTableCards = newDeck.splice(0, 4);
 
-        setPlayers(currentPlayers => {
-            const basePlayers = currentPlayers.length > 0 ? currentPlayers : createPlayersArr();
-            const nextPlayers = basePlayers.map((p, i) => ({
-                ...p,
-                hand: newDeck.splice(0, 3),
-                capturedCards: [],
-                escobas: 0
-            }));
-
-            const { escobas, remaining } = findInitialEscobas(initialTableCards);
-            let currentTable = remaining;
-            let pIdx = (dealerIdx + 1) % playerCount;
-            let initialMsgs = [`Ronda ${round} iniciada.`];
-
-            if (escobas.length > 0) {
-                nextPlayers[dealerIdx].capturedCards = [...escobas.flat()];
-                nextPlayers[dealerIdx].escobas += escobas.length;
-                setLastCapturerIdx(dealerIdx);
-                initialMsgs.push(`¡Escoba de Mano! ${nextPlayers[dealerIdx].name} hizo ${escobas.length}.`);
-            }
-
-            channelRef.current.send({
-                type: 'broadcast',
-                event: 'init_game',
-                payload: {
-                    deck: newDeck,
-                    table: currentTable,
-                    players: nextPlayers,
-                    currentPlayerIdx: pIdx,
-                    dealerIdx
-                }
-            });
-
-            setDeck(newDeck);
-            setTable(currentTable);
-            setCurrentPlayerIdx(pIdx);
-            setGameLog(prev => [...initialMsgs, ...prev]);
-            return nextPlayers;
+        // Give each player 3 cards
+        realPlayers.forEach(p => {
+            p.hand = newDeck.splice(0, 3);
         });
+
+        const { escobas, remaining } = findInitialEscobas(initialTableCards);
+        let currentTable = remaining;
+        let pIdx = 0; // First player starts
+        let initialMsgs = [`Ronda ${round} iniciada.`];
+
+        if (escobas.length > 0) {
+            realPlayers[0].capturedCards = [...escobas.flat()];
+            realPlayers[0].escobas += escobas.length;
+            setLastCapturerIdx(0);
+            initialMsgs.push(`¡Escoba de Mano! ${realPlayers[0].name} hizo ${escobas.length}.`);
+        }
+
+        // Broadcast to all players
+        console.log('Broadcasting init_game with players:', realPlayers);
+        channel.send({
+            type: 'broadcast',
+            event: 'init_game',
+            payload: {
+                deck: newDeck,
+                table: currentTable,
+                players: realPlayers,
+                currentPlayerIdx: pIdx,
+                dealerIdx: 0
+            }
+        });
+
+        // Also set locally for host
+        setDeck(newDeck);
+        setTable(currentTable);
+        setPlayers(realPlayers);
+        setCurrentPlayerIdx(pIdx);
+        setDealerIdx(0);
+        setGameLog(prev => [...initialMsgs, ...prev]);
     };
 
     const startRound = useCallback(() => {
