@@ -54,6 +54,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     const [playerRole, setPlayerRole] = useState(null); // 'host', 'guest'
     const [myPlayerIdx, setMyPlayerIdx] = useState(0);
     const [waitingForOpponent, setWaitingForOpponent] = useState(gameMode === 'multi');
+    const gameInitializedRef = useRef(false);
 
     // Timer Logic
     useEffect(() => {
@@ -114,37 +115,36 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                 .on('presence', { event: 'sync' }, () => {
                     const state = channel.presenceState();
                     const playersInRoom = Object.keys(state);
+                    console.log('Players in room:', playersInRoom);
 
+                    // First player alphabetically is the host
+                    const sortedPlayers = playersInRoom.sort();
+                    const isHost = sortedPlayers[0] === playerName;
+                    setPlayerRole(isHost ? 'host' : 'guest');
+                    setMyPlayerIdx(sortedPlayers.indexOf(playerName));
+
+                    // When we have 2 players, the host starts the game
                     if (playersInRoom.length >= 2) {
                         setWaitingForOpponent(false);
+
+                        // Only host initializes the game, and only once
+                        if (isHost && deck.length === 0 && !gameInitializedRef.current) {
+                            gameInitializedRef.current = true;
+                            console.log('Host starting game...');
+                            setTimeout(() => startRoundMulti(), 500);
+                        }
                     } else {
                         setWaitingForOpponent(true);
                     }
-
-                    // First player to join is the host (simple alphabetical logic for stability)
-                    const sortedPlayers = playersInRoom.sort();
-                    if (sortedPlayers[0] === playerName) {
-                        setPlayerRole('host');
-                        setMyPlayerIdx(0);
-                    } else {
-                        setPlayerRole('guest');
-                        setMyPlayerIdx(sortedPlayers.indexOf(playerName));
-                    }
-                })
-                .on('presence', { event: 'join' }, ({ key }) => {
-                    // Update waiting state when someone joins
-                    const state = channel.presenceState();
-                    if (Object.keys(state).length >= 2) {
-                        setWaitingForOpponent(false);
-                    }
                 })
                 .on('broadcast', { event: 'init_game' }, ({ payload }) => {
+                    console.log('Received init_game:', payload);
                     setDeck(payload.deck);
                     setTable(payload.table);
                     setPlayers(payload.players);
                     setCurrentPlayerIdx(payload.currentPlayerIdx);
                     setDealerIdx(payload.dealerIdx);
-                    setGameLog(prev => ["Partida sincronizada (Supabase).", ...prev]);
+                    setGameLog(prev => ["Partida sincronizada.", ...prev]);
                     setWaitingForOpponent(false);
                 })
                 .on('broadcast', { event: 'play_move' }, ({ payload }) => {
@@ -154,6 +154,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                     processSoplo(payload.playerIdx, payload.cardsCaptured, true);
                 })
                 .subscribe(async (status) => {
+                    console.log('Channel status:', status);
                     if (status === 'SUBSCRIBED') {
                         await channel.track({ online_at: new Date().toISOString() });
                     }
@@ -166,14 +167,6 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
             };
         }
     }, [gameMode, roomId, playerName]);
-
-    // Host starting round effect
-    useEffect(() => {
-        if (gameMode === 'multi' && playerRole === 'host' && !waitingForOpponent && deck.length === 0) {
-            // Only start if we haven't started yet
-            setTimeout(() => startRoundMulti(), 500);
-        }
-    }, [playerRole, waitingForOpponent, gameMode]);
 
     const startRoundMulti = () => {
         if (playerRole !== 'host') return;

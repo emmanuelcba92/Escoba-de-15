@@ -142,8 +142,8 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                             </div>
                             <div className="text-center space-y-4 w-full">
                                 <div className="space-y-1">
-                                    <h2 className="text-4xl font-black italic tracking-tighter uppercase text-white">Tu Sala</h2>
-                                    <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Comparte este código</p>
+                                    <h2 className="text-4xl font-black italic tracking-tighter uppercase text-white">Esperando...</h2>
+                                    <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Código de la sala</p>
                                 </div>
                                 <div className="bg-white/5 border-2 border-dashed border-white/20 rounded-3xl p-6 flex flex-col items-center gap-4">
                                     <span className="text-6xl font-black tracking-[0.2em] text-yellow-500 drop-shadow-[0_0_20px_rgba(234,179,8,0.3)]">{game.roomId}</span>
@@ -157,7 +157,7 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                                         Copiar Código
                                     </button>
                                 </div>
-                                <p className="text-white/30 text-[10px] leading-relaxed px-4">La partida comenzará automáticamente cuando tu oponente ingrese el código.</p>
+                                <p className="text-white/30 text-[10px] leading-relaxed px-4">Tu oponente debe ingresar el mismo código. La partida comenzará automáticamente.</p>
                             </div>
                             <button onClick={() => window.location.reload()} className="text-white/40 hover:text-white text-[10px] font-black tracking-widest uppercase">Cancelar y salir</button>
                         </div>

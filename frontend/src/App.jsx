@@ -127,27 +127,13 @@ function AppContent({ gameStarted, setGameStarted }) {
                   <span className="bg-blue-600 text-[8px] font-bold text-white px-2 py-0.5 rounded-full uppercase tracking-widest translate-y-2">Multiplayer Online</span>
                 </div>
                 {!isJoining ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => {
-                        const code = Math.random().toString(36).substring(2, 6).toUpperCase();
-                        setRoomId(code);
-                        setMode('multi');
-                        setGameStarted(true);
-                      }}
-                      className="py-4 sm:py-5 rounded-3xl border-2 border-blue-500 bg-blue-500 text-white flex items-center justify-center gap-3 shadow-lg shadow-blue-500/20 active:scale-95 transition-all text-sm sm:text-base font-bold"
-                    >
-                      <Users size={18} />
-                      CREAR SALA
-                    </button>
-                    <button
-                      onClick={() => setIsJoining(true)}
-                      className="py-4 sm:py-5 rounded-3xl border-2 border-blue-500/30 text-blue-400/80 hover:bg-blue-500/10 flex items-center justify-center gap-3 transition-all text-sm sm:text-base font-bold"
-                    >
-                      <Globe size={18} />
-                      UNIRSE
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setIsJoining(true)}
+                    className="w-full py-4 sm:py-5 rounded-3xl border-2 border-blue-500 bg-blue-500 text-white flex items-center justify-center gap-3 shadow-lg shadow-blue-500/20 active:scale-95 transition-all text-sm sm:text-base font-bold"
+                  >
+                    <Globe size={18} />
+                    MULTIJUGADOR ONLINE
+                  </button>
                 ) : (
                   <motion.div
                     initial={{ scale: 0.9, opacity: 0 }}
@@ -155,9 +141,10 @@ function AppContent({ gameStarted, setGameStarted }) {
                     className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 sm:p-6 space-y-4"
                   >
                     <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-black uppercase tracking-widest text-blue-400">Unirse a Sala</label>
-                      <button onClick={() => setIsJoining(false)} className="text-white/40 hover:text-white text-[10px] font-bold">CANCELAR</button>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-blue-400">Código de Sala</label>
+                      <button onClick={() => { setIsJoining(false); setRoomId(''); }} className="text-white/40 hover:text-white text-[10px] font-bold">CANCELAR</button>
                     </div>
+                    <p className="text-white/40 text-[10px] leading-relaxed">Ambos jugadores deben ingresar el mismo código para unirse a la partida.</p>
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -165,7 +152,7 @@ function AppContent({ gameStarted, setGameStarted }) {
                         value={roomId}
                         autoFocus
                         onChange={(e) => setRoomId(e.target.value.toUpperCase().slice(0, 4))}
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-base font-bold outline-none ring-blue-500/20 focus:ring-4 transition-all uppercase"
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-base font-bold outline-none ring-blue-500/20 focus:ring-4 transition-all uppercase text-center tracking-widest"
                       />
                       <button
                         disabled={roomId.length < 4}
