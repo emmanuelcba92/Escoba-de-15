@@ -152,6 +152,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                     setWaitingForOpponent(false);
                 })
                 .on('broadcast', { event: 'play_move' }, ({ payload }) => {
+                    console.log('Received play_move from remote:', payload);
                     processMove(payload.playerIdx, payload.move.cardPlayed, payload.move.cardsCaptured, payload.move.isDiscard, true);
                 })
                 .on('broadcast', { event: 'soplo_made' }, ({ payload }) => {
@@ -287,15 +288,23 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     }, [currentPlayerIdx, players, table, waitingForOpponent, difficulty]);
 
     const processMove = (playerIdx, cardPlayed, cardsCaptured, isDiscard = false, isRemote = false) => {
+        console.log('processMove called:', { playerIdx, myPlayerIdx, isRemote, gameMode, hasChannel: !!channelRef.current });
+
         if (gameMode === 'multi' && playerIdx === myPlayerIdx && !isRemote) {
-            channelRef.current.send({
-                type: 'broadcast',
-                event: 'play_move',
-                payload: {
-                    playerIdx: myPlayerIdx,
-                    move: { cardPlayed, cardsCaptured, isDiscard }
-                }
-            });
+            console.log('Broadcasting play_move...');
+            if (channelRef.current) {
+                channelRef.current.send({
+                    type: 'broadcast',
+                    event: 'play_move',
+                    payload: {
+                        playerIdx: myPlayerIdx,
+                        move: { cardPlayed, cardsCaptured, isDiscard }
+                    }
+                });
+                console.log('play_move broadcasted successfully');
+            } else {
+                console.error('Channel not available for broadcast!');
+            }
         }
 
         const player = players[playerIdx];
