@@ -5,7 +5,7 @@ const Card = ({ card, onClick, isSelected, isPlayable, hidden }) => {
     const { suit, value } = card;
 
     // Sprite Configuration
-    const spritePath = '/assets/cartas/sprite.jpg';
+    const spritePath = '/assets/cartas/sprite_corregido.png';
 
     // Nueva lógica simplificada para la baraja diseñada a medida
     // El sprite es una cuadrícula perfecta de 10 columnas x 4 filas (sin etiquetas laterales)
