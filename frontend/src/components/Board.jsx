@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from './Card';
-import { Play, Layers, ShieldCheck, Wifi, Loader2, Wind, History, X } from 'lucide-react';
+import { Play, Layers, ShieldCheck, Wifi, Loader2, Wind, History, X, Users } from 'lucide-react';
 
 const Deck = ({ count }) => (
     <div className="flex flex-col items-center gap-1 group">
@@ -191,7 +191,7 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                 <div key={p.id} className={`${containerClasses[getPlayerPos(i)]} z-30`}>
                     <div className="relative group">
                         {/* Score bubble for mobile */}
-                        <div className="lg:hidden absolute -top-12 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/20 flex items-center gap-3 whitespace-nowrap shadow-2xl z-50">
+                        <div className={`lg:hidden absolute ${getPlayerPos(i) === 'bottom' ? '-top-12 right-2 translate-x-0' : '-top-12 left-1/2 -translate-x-1/2'} bg-black/60 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/20 flex items-center gap-3 whitespace-nowrap shadow-2xl z-50`}>
                             <div className="flex items-center gap-1.5">
                                 <span className="text-[10px] font-black uppercase text-white/50">Pts</span>
                                 <span className="text-xs font-black text-white">{p.score}</span>
