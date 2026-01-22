@@ -57,6 +57,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     const [waitingForOpponent, setWaitingForOpponent] = useState(gameMode === 'multi');
     const gameInitializedRef = useRef(false);
     const playersRef = useRef([]);
+    const tableRef = useRef([]);
 
     // Timer Logic
     useEffect(() => {
@@ -149,6 +150,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                     console.log('Received init_game:', payload);
                     setDeck(payload.deck);
                     setTable(payload.table);
+                    tableRef.current = payload.table; // Update ref immediately
                     setPlayers(payload.players);
                     playersRef.current = payload.players; // Update ref immediately
                     setCurrentPlayerIdx(payload.currentPlayerIdx);
@@ -229,6 +231,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         // Also set locally for host
         setDeck(newDeck);
         setTable(currentTable);
+        tableRef.current = currentTable; // Update ref immediately
         setPlayers(realPlayers);
         playersRef.current = realPlayers; // Update ref immediately
         setCurrentPlayerIdx(pIdx);
@@ -315,8 +318,10 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
             }
         }
 
-        // Use ref for players in remote moves to get the latest data
+        // Use refs for remote moves to get the latest data
         const currentPlayers = isRemote && playersRef.current.length > 0 ? playersRef.current : players;
+        const currentTable = isRemote && tableRef.current.length > 0 ? tableRef.current : table;
+
         const player = currentPlayers[playerIdx];
         if (!player) {
             console.error('Player not found:', playerIdx, currentPlayers);
@@ -324,7 +329,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         }
 
         const newHand = player.hand.filter(c => c.id !== cardPlayed.id);
-        let newTable = [...table];
+        let newTable = [...currentTable];
         let newCaptured = [...player.capturedCards];
         let escobaMade = false;
         let logMsg = '';
@@ -366,6 +371,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         setPlayers(newPlayers);
         playersRef.current = newPlayers; // Update ref too
         setTable(newTable);
+        tableRef.current = newTable; // Update ref too
         setGameLog(prev => [logMsg, ...prev]);
         setSelectedHandCard(null);
         setSelectedTableCards([]);
