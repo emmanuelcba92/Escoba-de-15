@@ -115,21 +115,27 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                     const state = channel.presenceState();
                     const playersInRoom = Object.keys(state);
 
-                    // First player to join is the host
-                    if (playersInRoom[0] === playerName) {
+                    if (playersInRoom.length >= 2) {
+                        setWaitingForOpponent(false);
+                    } else {
+                        setWaitingForOpponent(true);
+                    }
+
+                    // First player to join is the host (simple alphabetical logic for stability)
+                    const sortedPlayers = playersInRoom.sort();
+                    if (sortedPlayers[0] === playerName) {
                         setPlayerRole('host');
                         setMyPlayerIdx(0);
                     } else {
                         setPlayerRole('guest');
-                        setMyPlayerIdx(1); // Simple 2-player logic for now
-                        setWaitingForOpponent(false);
+                        setMyPlayerIdx(sortedPlayers.indexOf(playerName));
                     }
                 })
                 .on('presence', { event: 'join' }, ({ key }) => {
-                    if (key !== playerName) {
+                    // Update waiting state when someone joins
+                    const state = channel.presenceState();
+                    if (Object.keys(state).length >= 2) {
                         setWaitingForOpponent(false);
-                        // If I'm host and someone joined, I start the round
-                        // Using a ref-like check to avoid state stale closure
                     }
                 })
                 .on('broadcast', { event: 'init_game' }, ({ payload }) => {
@@ -261,6 +267,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     }, [round]);
 
     useEffect(() => {
+        if (gameMode === 'multi') return; // Strictly no AI moves in multi mode
         const currentPlayer = players[currentPlayerIdx];
         if (currentPlayer?.isBot && !waitingForOpponent) {
             const timer = setTimeout(() => {
