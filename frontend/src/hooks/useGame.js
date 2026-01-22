@@ -350,15 +350,21 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
             setLastCapturerIdx(playerIdx);
         }
 
-        const newPlayers = [...players];
-        newPlayers[playerIdx] = {
-            ...player,
-            hand: newHand,
-            capturedCards: newCaptured,
-            escobas: player.escobas + (escobaMade ? 1 : 0)
-        };
+        // Use currentPlayers (from ref for remote) to create new array
+        const newPlayers = currentPlayers.map((p, i) => {
+            if (i === playerIdx) {
+                return {
+                    ...player,
+                    hand: newHand,
+                    capturedCards: newCaptured,
+                    escobas: player.escobas + (escobaMade ? 1 : 0)
+                };
+            }
+            return { ...p }; // Keep other players intact
+        });
 
         setPlayers(newPlayers);
+        playersRef.current = newPlayers; // Update ref too
         setTable(newTable);
         setGameLog(prev => [logMsg, ...prev]);
         setSelectedHandCard(null);
@@ -371,6 +377,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                 const nextPlayersArr = newPlayers.map(p => ({ ...p, hand: nextDeck.splice(0, 3) }));
                 setDeck(nextDeck);
                 setPlayers(nextPlayersArr);
+                playersRef.current = nextPlayersArr; // Update ref too
                 setGameLog(prev => ["Nuevas cartas repartidas.", ...prev]);
                 setCurrentPlayerIdx((dealerIdx + 1) % playerCount);
             } else {
