@@ -187,32 +187,56 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
             </AnimatePresence>
 
             {/* Players Hands and Scores in Mobile */}
-            {players.map((p, i) => (
-                <div key={p.id} className={`${containerClasses[getPlayerPos(i)]} z-30`}>
-                    <div className="relative group">
-                        {/* Score bubble for mobile */}
-                        <div className={`lg:hidden absolute ${getPlayerPos(i) === 'bottom' ? '-top-12 right-2 translate-x-0' : '-top-12 left-1/2 -translate-x-1/2'} bg-black/60 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/20 flex items-center gap-3 whitespace-nowrap shadow-2xl z-50`}>
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-black uppercase text-white/50">Pts</span>
-                                <span className="text-xs font-black text-white">{p.score}</span>
-                            </div>
-                            <div className="w-[1px] h-3 bg-white/20" />
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] font-black uppercase text-yellow-500/50">✨</span>
-                                <span className="text-xs font-black text-yellow-500">{p.escobas}</span>
+            {players.map((p, i) => {
+                const position = getPlayerPos(i);
+                const isBottomPlayer = position === 'bottom';
+
+                return (
+                    <div key={p.id} className={`${containerClasses[position]} z-30`}>
+                        <div className="relative group flex items-center gap-3">
+                            {/* Score bubble for bottom player - on the LEFT side */}
+                            {isBottomPlayer && (
+                                <div className="lg:hidden bg-yellow-500 backdrop-blur-xl px-4 py-2 rounded-full border border-yellow-400 flex items-center gap-3 whitespace-nowrap shadow-2xl z-50">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-black uppercase text-green-900">PTS</span>
+                                        <span className="text-sm font-black text-green-950">{p.score}</span>
+                                    </div>
+                                    <div className="w-[1px] h-4 bg-green-900/30" />
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-[10px] font-black text-green-900/70">✨</span>
+                                        <span className="text-sm font-black text-green-950">{p.escobas}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="relative">
+                                {/* Score bubble for opponent - BELOW their name tag */}
+                                {!isBottomPlayer && (
+                                    <div className="lg:hidden absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-xl px-3 py-1 rounded-full border border-white/20 flex items-center gap-2 whitespace-nowrap shadow-2xl z-50">
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-[8px] font-black uppercase text-white/50">PTS</span>
+                                            <span className="text-xs font-black text-white">{p.score}</span>
+                                        </div>
+                                        <div className="w-[1px] h-3 bg-white/20" />
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-[8px] font-black text-yellow-500/70">✨</span>
+                                            <span className="text-xs font-black text-yellow-500">{p.escobas}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                <PlayerHand
+                                    player={p}
+                                    isCurrent={currentPlayerIdx === i}
+                                    isPlayerTurn={currentPlayerIdx === i}
+                                    onCardClick={onHandCardClick}
+                                    selectedHandCard={currentPlayerIdx === i ? selectedHandCard : null}
+                                    hideCards={privacyOverlay || (gameMode === 'local' && currentPlayerIdx !== i) || (gameMode === 'multi' && i !== myPlayerIdx)}
+                                />
                             </div>
                         </div>
-                        <PlayerHand
-                            player={p}
-                            isCurrent={currentPlayerIdx === i}
-                            isPlayerTurn={currentPlayerIdx === i}
-                            onCardClick={onHandCardClick}
-                            selectedHandCard={currentPlayerIdx === i ? selectedHandCard : null}
-                            hideCards={privacyOverlay || (gameMode === 'local' && currentPlayerIdx !== i) || (gameMode === 'multi' && i !== myPlayerIdx)}
-                        />
                     </div>
-                </div>
-            ))}
+                );
+            })}
 
             <div className="flex flex-col items-center justify-center space-y-12 relative z-20 w-full max-w-4xl h-full mt-10">
                 <div className="flex flex-wrap justify-center items-center gap-6 min-h-[250px]">
