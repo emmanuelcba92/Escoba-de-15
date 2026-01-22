@@ -53,8 +53,10 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     const channelRef = useRef(null);
     const [playerRole, setPlayerRole] = useState(null); // 'host', 'guest'
     const [myPlayerIdx, setMyPlayerIdx] = useState(0);
+    const myPlayerIdxRef = useRef(0);
     const [waitingForOpponent, setWaitingForOpponent] = useState(gameMode === 'multi');
     const gameInitializedRef = useRef(false);
+    const playersRef = useRef([]);
 
     // Timer Logic
     useEffect(() => {
@@ -126,6 +128,8 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
 
                     setPlayerRole(isHost ? 'host' : 'guest');
                     setMyPlayerIdx(myIdx);
+                    myPlayerIdxRef.current = myIdx; // Update ref immediately
+                    console.log('My player index set to:', myIdx);
 
                     // When we have 2 players, the host starts the game
                     if (playersInRoom.length >= 2) {
@@ -146,6 +150,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                     setDeck(payload.deck);
                     setTable(payload.table);
                     setPlayers(payload.players);
+                    playersRef.current = payload.players; // Update ref immediately
                     setCurrentPlayerIdx(payload.currentPlayerIdx);
                     setDealerIdx(payload.dealerIdx);
                     setGameLog(prev => ["Partida sincronizada.", ...prev]);
@@ -225,6 +230,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         setDeck(newDeck);
         setTable(currentTable);
         setPlayers(realPlayers);
+        playersRef.current = realPlayers; // Update ref immediately
         setCurrentPlayerIdx(pIdx);
         setDealerIdx(0);
         setGameLog(prev => [...initialMsgs, ...prev]);
@@ -288,16 +294,18 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     }, [currentPlayerIdx, players, table, waitingForOpponent, difficulty]);
 
     const processMove = (playerIdx, cardPlayed, cardsCaptured, isDiscard = false, isRemote = false) => {
-        console.log('processMove called:', { playerIdx, myPlayerIdx, isRemote, gameMode, hasChannel: !!channelRef.current });
+        // Use ref for myPlayerIdx to avoid stale closure
+        const currentMyPlayerIdx = myPlayerIdxRef.current;
+        console.log('processMove called:', { playerIdx, currentMyPlayerIdx, isRemote, gameMode, hasChannel: !!channelRef.current });
 
-        if (gameMode === 'multi' && playerIdx === myPlayerIdx && !isRemote) {
+        if (gameMode === 'multi' && playerIdx === currentMyPlayerIdx && !isRemote) {
             console.log('Broadcasting play_move...');
             if (channelRef.current) {
                 channelRef.current.send({
                     type: 'broadcast',
                     event: 'play_move',
                     payload: {
-                        playerIdx: myPlayerIdx,
+                        playerIdx: currentMyPlayerIdx,
                         move: { cardPlayed, cardsCaptured, isDiscard }
                     }
                 });
@@ -307,8 +315,13 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
             }
         }
 
-        const player = players[playerIdx];
-        if (!player) return;
+        // Use ref for players in remote moves to get the latest data
+        const currentPlayers = isRemote && playersRef.current.length > 0 ? playersRef.current : players;
+        const player = currentPlayers[playerIdx];
+        if (!player) {
+            console.error('Player not found:', playerIdx, currentPlayers);
+            return;
+        }
 
         const newHand = player.hand.filter(c => c.id !== cardPlayed.id);
         let newTable = [...table];
