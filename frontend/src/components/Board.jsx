@@ -9,7 +9,7 @@ const Deck = ({ count }) => (
             {[...Array(Math.min(3, Math.ceil(count / 10)))].map((_, i) => (
                 <div key={i} className="absolute inset-0 bg-blue-900/40 rounded-lg border border-white/10" style={{ transform: `translate(${-i * 1.5}px, ${-i * 1.5}px)` }} />
             ))}
-            <div className="relative w-10 h-14 sm:w-16 sm:h-24 bg-white rounded-lg shadow-2xl overflow-hidden border-2 border-white/20">
+            <div className="relative w-14 h-20 sm:w-16 sm:h-24 bg-white rounded-lg shadow-2xl overflow-hidden border-2 border-white/20">
                 <div className="absolute inset-0 bg-blue-900 flex items-center justify-center">
                     <div className="w-full h-full opacity-20" style={{ backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`, backgroundSize: '8px 8px' }} />
                     <Layers className="text-white/20 size-6 sm:size-8" />
@@ -24,8 +24,8 @@ const Deck = ({ count }) => (
 const PlayerHand = ({ player, isCurrent, onCardClick, selectedHandCard, isPlayerTurn, hideCards }) => {
     const isBot = player.isBot;
     return (
-        <div className="flex flex-col items-center space-y-2 sm:space-y-3">
-            <div className="flex -space-x-10 sm:-space-x-8">
+        <div className="flex flex-col items-center space-y-2 sm:space-y-4">
+            <div className="flex -space-x-12 sm:-space-x-8">
                 {player.hand.map((card, i) => {
                     const isSelected = selectedHandCard?.id === card.id;
                     return (
@@ -101,8 +101,8 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
     };
 
     const containerClasses = {
-        bottom: "absolute bottom-16 sm:bottom-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
-        top: "absolute top-4 sm:top-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
+        bottom: "absolute bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
+        top: "absolute top-8 sm:top-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
         left: "absolute top-1/2 left-2 sm:left-10 -translate-y-1/2 rotate-90",
         right: "absolute top-1/2 right-2 sm:right-10 -translate-y-1/2 -rotate-90",
         "top-right": "absolute top-4 sm:top-10 right-4 sm:right-20",
@@ -131,17 +131,35 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-[110] bg-green-950/80 backdrop-blur-xl flex items-center justify-center"
+                        className="absolute inset-0 z-[110] bg-green-950/90 backdrop-blur-xl flex items-center justify-center p-6"
                     >
-                        <div className="flex flex-col items-center space-y-6">
+                        <div className="flex flex-col items-center space-y-8 max-w-sm w-full">
                             <div className="relative">
-                                <Wifi size={64} className="text-yellow-500 animate-pulse" />
-                                <Loader2 size={24} className="text-white absolute -top-2 -right-2 animate-spin" />
+                                <Users size={64} className="text-yellow-500 animate-pulse" />
+                                <div className="absolute -top-2 -right-2 size-8 bg-blue-500 rounded-full flex items-center justify-center animate-spin">
+                                    <Loader2 size={16} className="text-white" />
+                                </div>
                             </div>
-                            <div className="text-center space-y-2">
-                                <h2 className="text-3xl font-black italic tracking-tighter uppercase">Esperando oponente...</h2>
-                                <p className="text-white/40 text-sm font-medium">Comparte el código de la sala con tu sobrino.</p>
+                            <div className="text-center space-y-4 w-full">
+                                <div className="space-y-1">
+                                    <h2 className="text-4xl font-black italic tracking-tighter uppercase text-white">Tu Sala</h2>
+                                    <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Comparte este código</p>
+                                </div>
+                                <div className="bg-white/5 border-2 border-dashed border-white/20 rounded-3xl p-6 flex flex-col items-center gap-4">
+                                    <span className="text-6xl font-black tracking-[0.2em] text-yellow-500 drop-shadow-[0_0_20px_rgba(234,179,8,0.3)]">{game.roomId}</span>
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(game.roomId);
+                                            alert("¡Código copiado!");
+                                        }}
+                                        className="w-full py-3 bg-white text-green-950 rounded-xl font-bold text-xs uppercase hover:bg-yellow-500 transition-colors"
+                                    >
+                                        Copiar Código
+                                    </button>
+                                </div>
+                                <p className="text-white/30 text-[10px] leading-relaxed px-4">La partida comenzará automáticamente cuando tu oponente ingrese el código.</p>
                             </div>
+                            <button onClick={() => window.location.reload()} className="text-white/40 hover:text-white text-[10px] font-black tracking-widest uppercase">Cancelar y salir</button>
                         </div>
                     </motion.div>
                 )}
@@ -173,10 +191,16 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                 <div key={p.id} className={`${containerClasses[getPlayerPos(i)]} z-30`}>
                     <div className="relative group">
                         {/* Score bubble for mobile */}
-                        <div className="lg:hidden absolute -top-8 left-1/2 -translate-x-1/2 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1.5 whitespace-nowrap">
-                            <span className="text-[8px] font-black uppercase text-white/60">{p.score} pts</span>
-                            <div className="w-[1px] h-2 bg-white/10" />
-                            <span className="text-[8px] font-medium text-yellow-500">{p.escobas} ✨</span>
+                        <div className="lg:hidden absolute -top-12 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/20 flex items-center gap-3 whitespace-nowrap shadow-2xl z-50">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-black uppercase text-white/50">Pts</span>
+                                <span className="text-xs font-black text-white">{p.score}</span>
+                            </div>
+                            <div className="w-[1px] h-3 bg-white/20" />
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-black uppercase text-yellow-500/50">✨</span>
+                                <span className="text-xs font-black text-yellow-500">{p.escobas}</span>
+                            </div>
                         </div>
                         <PlayerHand
                             player={p}

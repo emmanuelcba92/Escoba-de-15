@@ -124,48 +124,60 @@ function AppContent({ gameStarted, setGameStarted }) {
 
               <div className="relative group">
                 <div className="absolute inset-x-0 -top-4 opacity-0 group-hover:opacity-100 transition-opacity flex justify-center">
-                  <span className="bg-blue-600 text-[8px] font-bold text-white px-2 py-0.5 rounded-full uppercase tracking-widest translate-y-2">Multiplayer Beta</span>
+                  <span className="bg-blue-600 text-[8px] font-bold text-white px-2 py-0.5 rounded-full uppercase tracking-widest translate-y-2">Multiplayer Online</span>
                 </div>
-                <button
-                  onClick={() => setIsJoining(!isJoining)}
-                  className={`w-full py-4 sm:py-5 rounded-3xl border-2 flex items-center justify-center gap-3 transition-all text-sm sm:text-base ${isJoining ? 'border-blue-500 bg-blue-500/10' : 'border-blue-500/30 text-blue-400/80 hover:bg-blue-500/10'}`}
-                >
-                  <Globe size={18} />
-                  MULTIJUGADOR ONLINE
-                </button>
-              </div>
-
-              {/* Online Join Section */}
-              <AnimatePresence>
-                {isJoining && (
+                {!isJoining ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => {
+                        const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+                        setRoomId(code);
+                        setMode('multi');
+                        setGameStarted(true);
+                      }}
+                      className="py-4 sm:py-5 rounded-3xl border-2 border-blue-500 bg-blue-500 text-white flex items-center justify-center gap-3 shadow-lg shadow-blue-500/20 active:scale-95 transition-all text-sm sm:text-base font-bold"
+                    >
+                      <Users size={18} />
+                      CREAR SALA
+                    </button>
+                    <button
+                      onClick={() => setIsJoining(true)}
+                      className="py-4 sm:py-5 rounded-3xl border-2 border-blue-500/30 text-blue-400/80 hover:bg-blue-500/10 flex items-center justify-center gap-3 transition-all text-sm sm:text-base font-bold"
+                    >
+                      <Globe size={18} />
+                      UNIRSE
+                    </button>
+                  </div>
+                ) : (
                   <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden space-y-4 pt-2"
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="bg-blue-500/10 border border-blue-500/30 rounded-3xl p-4 sm:p-6 space-y-4"
                   >
-                    <div className="space-y-2">
-                      <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/40 ml-1">Código de Sala</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="CÓDIGO..."
-                          value={roomId}
-                          onChange={(e) => setRoomId(e.target.value.toUpperCase())}
-                          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-bold outline-none ring-blue-500/20 focus:ring-4 transition-all uppercase"
-                        />
-                        <button
-                          disabled={!roomId}
-                          onClick={() => { setMode('multi'); setGameStarted(true); }}
-                          className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 sm:px-8 rounded-xl font-bold text-xs sm:text-sm transition-all uppercase"
-                        >
-                          ENTRAR
-                        </button>
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-blue-400">Unirse a Sala</label>
+                      <button onClick={() => setIsJoining(false)} className="text-white/40 hover:text-white text-[10px] font-bold">CANCELAR</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="CÓDIGO (EJ: XJ42)"
+                        value={roomId}
+                        autoFocus
+                        onChange={(e) => setRoomId(e.target.value.toUpperCase().slice(0, 4))}
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-base font-bold outline-none ring-blue-500/20 focus:ring-4 transition-all uppercase"
+                      />
+                      <button
+                        disabled={roomId.length < 4}
+                        onClick={() => { setMode('multi'); setGameStarted(true); }}
+                        className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-6 rounded-xl font-bold text-sm transition-all uppercase"
+                      >
+                        ENTRAR
+                      </button>
                     </div>
                   </motion.div>
                 )}
-              </AnimatePresence>
+              </div>
             </div>
 
             <div className="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3">

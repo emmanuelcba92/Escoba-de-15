@@ -456,6 +456,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         dealerIdx,
         gameMode,
         waitingForOpponent,
-        myPlayerIdx
+        myPlayerIdx,
+        roomId
     };
 };
