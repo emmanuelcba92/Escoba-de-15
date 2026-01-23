@@ -21,6 +21,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
     const [gameLog, setGameLog] = useState([]);
     const [round, setRound] = useState(1);
     const [closingPlayerIdx, setClosingPlayerIdx] = useState(null);
+    const processingAction = useRef(false);
 
     // Inicializar jugadores
     const createPlayers = useCallback(() => {
@@ -55,6 +56,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
             return nextIdx;
         });
         setTurnAction('draw');
+        processingAction.current = false; // Unlock next turn
     }, [playerCount, players]);
 
     // Iniciar nueva ronda
@@ -89,6 +91,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
         setTurnAction('draw');
         setClosingPlayerIdx(null);
         setGameLog(prev => [`Ronda ${round} iniciada.`, ...prev]);
+        processingAction.current = false; // Unlock start
     }, [players, round]);
 
     // Inicializar juego base
@@ -102,7 +105,8 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
 
     // Tomar carta
     const drawCard = useCallback((fromDeck = true) => {
-        if (turnAction !== 'draw' || gamePhase !== 'playing') return;
+        if (turnAction !== 'draw' || gamePhase !== 'playing' || processingAction.current) return;
+        processingAction.current = true; // Lock
 
         setPlayers(currentPlayers => {
             let drawnCard;
@@ -132,13 +136,19 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
 
             setTurnAction('discard');
             setGameLog(prev => [`${newPlayers[currentPlayerIdx].name} tomó una carta.`, ...prev]);
+
+            // Unlock immediately for discard phase, but small delay to prevent double clicks bridging phases?
+            // Actually discard is next phase, separate action.
+            setTimeout(() => { processingAction.current = false; }, 300);
+
             return newPlayers;
         });
     }, [currentPlayerIdx, deck, discardPile, turnAction, gamePhase]);
 
     // Descartar carta
     const discardCard = useCallback((card) => {
-        if (turnAction !== 'discard' || gamePhase !== 'playing') return;
+        if (turnAction !== 'discard' || gamePhase !== 'playing' || processingAction.current) return;
+        processingAction.current = true; // Lock
 
         setPlayers(currentPlayers => {
             const newPlayers = currentPlayers.map((p, i) => {
@@ -170,7 +180,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
 
     // Cerrar la mano
     const closeHand = useCallback(() => {
-        if (turnAction !== 'discard' || gamePhase !== 'playing') return;
+        if (turnAction !== 'discard' || gamePhase !== 'playing' || processingAction.current) return;
 
         const currentPlayer = players[currentPlayerIdx];
         const analysis = findBestCombination(currentPlayer.hand);
@@ -182,6 +192,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
             return;
         }
 
+        processingAction.current = true; // Lock
         setClosingPlayerIdx(currentPlayerIdx);
         setGamePhase('showing');
         setGameLog(prev => [`${currentPlayer.name} cerró la mano.`, ...prev]);
