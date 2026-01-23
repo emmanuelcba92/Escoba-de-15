@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { useRef, useEffect } from 'react';
+import { HashRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { StatusBar } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
@@ -31,7 +31,8 @@ const BackButtonHandler = () => {
       backListener = await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
         const currentPath = locationRef.current.pathname;
 
-        if (currentPath === '/') {
+        // In HashRouter, root might be '/' or empty, but usually '/' 
+        if (currentPath === '/' || currentPath === '') {
           const now = Date.now();
           if (now - lastBackPress.current < 2000) {
             CapacitorApp.exitApp();
@@ -57,7 +58,7 @@ const BackButtonHandler = () => {
         backListener.remove();
       }
     };
-  }, [navigate]); // navigate is stable, so this runs once on mount mostly
+  }, [navigate]);
 
   return null;
 };
