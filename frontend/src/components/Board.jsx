@@ -196,15 +196,33 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                         <div className="relative group flex items-center gap-3">
                             {/* Score bubble for bottom player - on the LEFT side */}
                             {isBottomPlayer && (
-                                <div className="lg:hidden bg-yellow-500 backdrop-blur-xl px-4 py-2 rounded-full border border-yellow-400 flex items-center gap-3 whitespace-nowrap shadow-2xl z-50">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] font-black uppercase text-green-900">PTS</span>
-                                        <span className="text-sm font-black text-green-950">{p.score}</span>
-                                    </div>
-                                    <div className="w-[1px] h-4 bg-green-900/30" />
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-[10px] font-black text-green-900/70">✨</span>
-                                        <span className="text-sm font-black text-green-950">{p.escobas}</span>
+                                <div className="flex flex-col items-center gap-3">
+                                    {/* Mobile Confirm Button - Positioned above score */}
+                                    <AnimatePresence>
+                                        {selectedHandCard && isOurTurn && !privacyOverlay && (
+                                            <motion.button
+                                                key="play-btn-mobile"
+                                                initial={{ scale: 0.5, opacity: 0, y: 10 }}
+                                                animate={{ scale: 1, opacity: 1, y: 0 }}
+                                                exit={{ scale: 0.5, opacity: 0, y: 10 }}
+                                                onClick={onPlayMove}
+                                                className="lg:hidden px-6 py-3 bg-yellow-500 text-green-950 font-black rounded-full shadow-2xl flex items-center gap-2 tracking-widest text-[10px] ring-4 ring-yellow-400/20 z-[60]"
+                                            >
+                                                <Play className="fill-green-950 size-3" /> CONFIRMAR
+                                            </motion.button>
+                                        )}
+                                    </AnimatePresence>
+
+                                    <div className="lg:hidden bg-yellow-500 backdrop-blur-xl px-4 py-2 rounded-full border border-yellow-400 flex items-center gap-3 whitespace-nowrap shadow-2xl z-50">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] font-black uppercase text-green-900">PTS</span>
+                                            <span className="text-sm font-black text-green-950">{p.score}</span>
+                                        </div>
+                                        <div className="w-[1px] h-4 bg-green-900/30" />
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] font-black text-green-900/70">✨</span>
+                                            <span className="text-sm font-black text-green-950">{p.escobas}</span>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -262,7 +280,7 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                                 animate={{ scale: 1, opacity: 1, y: 0 }}
                                 exit={{ scale: 0.5, opacity: 0, y: 20 }}
                                 onClick={onPlayMove}
-                                className="px-8 sm:px-16 py-3 sm:py-5 bg-yellow-500 text-green-950 font-black rounded-full shadow-2xl flex items-center gap-3 sm:gap-4 tracking-[0.2em] text-[10px] sm:text-sm ring-4 ring-yellow-400/20"
+                                className="hidden lg:flex px-8 sm:px-16 py-3 sm:py-5 bg-yellow-500 text-green-950 font-black rounded-full shadow-2xl items-center gap-3 sm:gap-4 tracking-[0.2em] text-[10px] sm:text-sm ring-4 ring-yellow-400/20"
                             >
                                 <Play className="fill-green-950 size-3 sm:size-4" /> CONFIRMAR
                             </motion.button>
