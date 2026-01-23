@@ -138,12 +138,12 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                 </div>
 
                 {/* Hand: Reorderable List */}
-                <div className="w-full max-w-lg px-2 overflow-x-auto no-scrollbar pb-2 hand-responsive">
+                <div className="w-full max-w-full px-2 overflow-x-visible no-scrollbar pb-2 hand-responsive flex justify-center transform-gpu">
                     <Reorder.Group
                         axis="x"
                         values={me?.hand || []}
                         onReorder={onReorderHand}
-                        className="flex justify-center -space-x-10 sm:-space-x-12 px-6"
+                        className="flex justify-center -space-x-10 sm:-space-x-12 px-2 py-2"
                     >
                         {me?.hand.map((card) => {
                             // Marcar si está en un juego para dar feedback visual sin reordenar
