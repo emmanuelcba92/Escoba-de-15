@@ -162,6 +162,14 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                     console.log('Received play_move from remote:', payload);
                     processMove(payload.playerIdx, payload.move.cardPlayed, payload.move.cardsCaptured, payload.move.isDiscard, true);
                 })
+                .on('broadcast', { event: 'deal_next_hands' }, ({ payload }) => {
+                    console.log('Received next hands from host:', payload);
+                    setDeck(payload.deck);
+                    setPlayers(payload.players);
+                    playersRef.current = payload.players;
+                    setCurrentPlayerIdx(payload.currentPlayerIdx);
+                    setGameLog(prev => ["Nuevas cartas repartidas.", ...prev]);
+                })
                 .on('broadcast', { event: 'soplo_made' }, ({ payload }) => {
                     processSoplo(payload.playerIdx, payload.cardsCaptured, true);
                 })
@@ -379,13 +387,40 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         const allEmpty = newPlayers.every(p => p.hand.length === 0);
         if (allEmpty) {
             if (deck.length > 0) {
-                const nextDeck = [...deck];
-                const nextPlayersArr = newPlayers.map(p => ({ ...p, hand: nextDeck.splice(0, 3) }));
-                setDeck(nextDeck);
-                setPlayers(nextPlayersArr);
-                playersRef.current = nextPlayersArr; // Update ref too
-                setGameLog(prev => ["Nuevas cartas repartidas.", ...prev]);
-                setCurrentPlayerIdx((dealerIdx + 1) % playerCount);
+                // En MULTI, solo el host decide qué cartas se reparten ahora
+                if (gameMode === 'multi') {
+                    if (playerRole === 'host') {
+                        const nextDeck = [...deck];
+                        const nextPlayersArr = newPlayers.map(p => ({ ...p, hand: nextDeck.splice(0, 3) }));
+                        const nextPlayerIdx = (dealerIdx + 1) % playerCount;
+
+                        // Notificar al otro jugador
+                        channelRef.current.send({
+                            type: 'broadcast',
+                            event: 'deal_next_hands',
+                            payload: {
+                                deck: nextDeck,
+                                players: nextPlayersArr,
+                                currentPlayerIdx: nextPlayerIdx
+                            }
+                        });
+
+                        // Aplicar localmente para el host
+                        setDeck(nextDeck);
+                        setPlayers(nextPlayersArr);
+                        playersRef.current = nextPlayersArr;
+                        setCurrentPlayerIdx(nextPlayerIdx);
+                        setGameLog(prev => ["Nuevas cartas repartidas.", ...prev]);
+                    }
+                } else {
+                    // Modo Local/IA - sigue igual
+                    const nextDeck = [...deck];
+                    const nextPlayersArr = newPlayers.map(p => ({ ...p, hand: nextDeck.splice(0, 3) }));
+                    setDeck(nextDeck);
+                    setPlayers(nextPlayersArr);
+                    setGameLog(prev => ["Nuevas cartas repartidas.", ...prev]);
+                    setCurrentPlayerIdx((dealerIdx + 1) % playerCount);
+                }
             } else {
                 endRound(newPlayers, newTable, lastCapturerIdx);
             }
