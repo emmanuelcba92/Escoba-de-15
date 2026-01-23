@@ -79,3 +79,25 @@ body {
 .text-glow {
   text-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
 }
+
+/* Landscape Optimizations */
+.safe-areas {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+@media (max-height: 480px) {
+  .felt-bg {
+    padding: 0.25rem !important;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

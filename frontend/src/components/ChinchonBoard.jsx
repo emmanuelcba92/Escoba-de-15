@@ -66,12 +66,12 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
     return (
         <div className="flex-1 h-full w-full flex flex-col items-center justify-between p-2 sm:p-6 relative felt-bg overflow-hidden text-white safe-areas">
             {/* 1. Opponents Row (Responsive) */}
-            <div className={`w-full flex justify-around items-start pt-4 sm:pt-10 ${players.length > 3 ? 'gap-1' : 'gap-4'}`}>
+            <div className={`w-full flex justify-around items-start pt-2 sm:pt-10 ${players.length > 3 ? 'gap-1' : 'gap-4'}`}>
                 {players.slice(1).map((p, i) => renderOpponent(p, i))}
             </div>
 
             {/* 2. Central Area: Deck & Discard (Dynamic sizing) */}
-            <div className="flex gap-4 sm:gap-10 items-center justify-center my-4">
+            <div className="flex-1 flex gap-4 sm:gap-10 items-center justify-center">
                 {/* Mazo */}
                 <motion.div
                     whileHover={isMyTurn && turnAction === 'draw' ? { scale: 1.05 } : {}}
@@ -79,7 +79,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     onClick={() => isMyTurn && turnAction === 'draw' && onDrawCard(true)}
                     className={`relative ${isMyTurn && turnAction === 'draw' ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
                 >
-                    <div className="relative scale-90 sm:scale-100">
+                    <div className="relative scale-75 sm:scale-100">
                         <div className="absolute inset-0 bg-blue-900 border border-white/10 rounded-xl translate-x-1 translate-y-1" />
                         <Card card={{}} hidden={true} />
                     </div>
@@ -96,7 +96,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     onClick={() => isMyTurn && turnAction === 'draw' && discardPile.length > 0 && onDrawCard(false)}
                     className={`relative ${isMyTurn && turnAction === 'draw' && discardPile.length > 0 ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                 >
-                    <div className="scale-90 sm:scale-100">
+                    <div className="scale-75 sm:scale-100">
                         {discardPile.length > 0 ? (
                             <Card card={discardPile[discardPile.length - 1]} />
                         ) : (
@@ -110,7 +110,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
             </div>
 
             {/* 3. Player Area (Fixed to bottom) */}
-            <div className="w-full flex flex-col items-center gap-2 sm:gap-4 pb-4 sm:pb-8">
+            <div className="w-full flex flex-col items-center gap-1 sm:gap-4 pb-2 sm:pb-8">
 
                 {/* Action Buttons Row */}
                 <div className="h-10 flex items-center gap-2">

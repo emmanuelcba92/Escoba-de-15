@@ -101,12 +101,12 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
     };
 
     const containerClasses = {
-        bottom: "absolute bottom-24 sm:bottom-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
-        top: "absolute top-8 sm:top-10 left-1/2 -translate-x-1/2 w-full flex justify-center",
-        left: "absolute top-1/2 left-2 sm:left-10 -translate-y-1/2 rotate-90",
-        right: "absolute top-1/2 right-2 sm:right-10 -translate-y-1/2 -rotate-90",
-        "top-right": "absolute top-4 sm:top-10 right-4 sm:right-20",
-        "top-left": "absolute top-4 sm:top-10 left-4 sm:left-20",
+        bottom: "absolute bottom-2 sm:bottom-10 left-1/2 -translate-x-1/2 w-fit flex justify-center lg:px-0 px-2",
+        top: "absolute top-2 sm:top-10 left-1/2 -translate-x-1/2 w-fit flex justify-center",
+        left: "absolute top-1/2 left-2 sm:left-10 -translate-y-1/2 rotate-90 scale-75 sm:scale-100",
+        right: "absolute top-1/2 right-2 sm:right-10 -translate-y-1/2 -rotate-90 scale-75 sm:scale-100",
+        "top-right": "absolute top-4 right-4 sm:right-20 scale-75 sm:scale-100",
+        "top-left": "absolute top-4 left-4 sm:left-20 scale-75 sm:scale-100",
     };
 
     // Verificación de suma 15 solo en mesa para el botón de soplo
@@ -269,18 +269,26 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
             })}
 
             <div className="flex flex-col items-center justify-center space-y-12 relative z-20 w-full max-w-4xl h-full mt-10">
-                <div className="flex flex-wrap justify-center items-center gap-6 min-h-[250px]">
-                    <AnimatePresence mode="popLayout">
-                        {table.map((card) => {
-                            const isSelected = selectedTableCards.some(c => c.id === card.id);
-                            return (
-                                <motion.div key={card.id} layout initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1, y: isSelected ? -20 : 0, zIndex: isSelected ? 50 : 10 }} exit={{ scale: 0, opacity: 0 }} onClick={() => !privacyOverlay && onTableCardClick(card)} className="cursor-pointer relative">
-                                    <Card card={card} isSelected={isSelected} />
-                                    {isSelected && <div className="absolute -top-2 -right-2 size-6 bg-yellow-500 rounded-full flex items-center justify-center animate-bounce shadow-lg ring-2 ring-green-900"><Play size={10} className="fill-green-950" /></div>}
-                                </motion.div>
-                            );
-                        })}
-                    </AnimatePresence>
+                <div className="flex flex-row justify-center items-center gap-4 sm:gap-10 w-full px-4 overflow-x-auto no-scrollbar">
+                    <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-6 min-h-[120px] sm:min-h-[250px] max-w-[80%]">
+                        <AnimatePresence mode="popLayout">
+                            {table.map((card) => {
+                                const isSelected = selectedTableCards.some(c => c.id === card.id);
+                                return (
+                                    <motion.div key={card.id} layout initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: isSelected ? 1 : 0.9, opacity: 1, y: isSelected ? -20 : 0, zIndex: isSelected ? 50 : 10 }} exit={{ scale: 0, opacity: 0 }} onClick={() => !privacyOverlay && onTableCardClick(card)} className="cursor-pointer relative scale-75 sm:scale-100">
+                                        <Card card={card} isSelected={isSelected} />
+                                        {isSelected && <div className="absolute -top-2 -right-2 size-6 bg-yellow-500 rounded-full flex items-center justify-center animate-bounce shadow-lg ring-2 ring-green-900"><Play size={10} className="fill-green-950" /></div>}
+                                    </motion.div>
+                                );
+                            })}
+                        </AnimatePresence>
+                    </div>
+
+                    {deckSize > 0 && (
+                        <div className="flex-shrink-0 scale-75 sm:scale-100">
+                            <Deck count={deckSize} />
+                        </div>
+                    )}
                 </div>
 
                 <div className="h-16 sm:h-24 flex items-center gap-4">
@@ -313,11 +321,7 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                 </div>
             </div>
 
-            {deckSize > 0 && (
-                <div className="absolute top-1/2 right-4 sm:right-40 -translate-y-1/2 opacity-40 scale-75 sm:scale-100">
-                    <Deck count={deckSize} />
-                </div>
-            )}
+
 
             {/* Mobile Log Drawer Trigger */}
             <div className="lg:hidden absolute bottom-6 right-6 z-50">
