@@ -15,36 +15,49 @@ const BackButtonHandler = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const lastBackPress = useRef(0);
+  const locationRef = useRef(location);
+
+  // Keep locationRef updated
+  useEffect(() => {
+    locationRef.current = location;
+  }, [location]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    const handleBackButton = async () => {
-      // If we are at root, handle double tap to exit
-      if (location.pathname === '/') {
-        const now = Date.now();
-        if (now - lastBackPress.current < 2000) {
-          CapacitorApp.exitApp();
+    let backListener = null;
+
+    const setupListener = async () => {
+      backListener = await CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+        const currentPath = locationRef.current.pathname;
+
+        if (currentPath === '/') {
+          const now = Date.now();
+          if (now - lastBackPress.current < 2000) {
+            CapacitorApp.exitApp();
+          } else {
+            lastBackPress.current = now;
+            Toast.show({
+              text: 'Presiona otra vez para salir',
+              duration: 'short',
+              position: 'bottom',
+            });
+          }
         } else {
-          lastBackPress.current = now;
-          await Toast.show({
-            text: 'Presiona otra vez para salir',
-            duration: 'short',
-            position: 'bottom',
-          });
+          // If NOT at root, go back
+          navigate(-1);
         }
-      } else {
-        // Otherwise go back
-        navigate(-1);
-      }
+      });
     };
 
-    const listenerPromise = CapacitorApp.addListener('backButton', handleBackButton);
+    setupListener();
 
     return () => {
-      listenerPromise.then(handle => handle.remove());
+      if (backListener) {
+        backListener.remove();
+      }
     };
-  }, [location, navigate]);
+  }, [navigate]); // navigate is stable, so this runs once on mount mostly
 
   return null;
 };
