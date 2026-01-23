@@ -2,7 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import EscobaPage from './pages/EscobaPage';
-import { ChinchonPage, JodetePage, TrucoPage } from './pages/ComingSoon';
+import ChinchonPage from './pages/ChinchonPage';
+import { JodetePage, TrucoPage } from './pages/ComingSoon';
 
 function App() {
   return (

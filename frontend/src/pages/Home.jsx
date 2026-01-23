@@ -51,9 +51,9 @@ const games = [
         description: 'Arma combinaciones y cierra la mano primero',
         icon: CopasIcon,
         color: 'from-red-500 to-pink-600',
-        available: false,
+        available: true,
         path: '/chinchon',
-        players: '2-8 jugadores'
+        players: '2-4 jugadores'
     },
     {
         id: 'jodete',

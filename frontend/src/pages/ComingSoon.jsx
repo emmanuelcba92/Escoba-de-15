@@ -74,15 +74,6 @@ const ComingSoon = ({ gameName, gameIcon: Icon, gradientFrom, gradientTo }) => {
     );
 };
 
-export const ChinchonPage = () => (
-    <ComingSoon
-        gameName="Chinchón"
-        gameIcon={Heart}
-        gradientFrom="red-500"
-        gradientTo="pink-600"
-    />
-);
-
 export const JodetePage = () => (
     <ComingSoon
         gameName="150 (Jodete)"
@@ -110,3 +101,4 @@ export const TrucoPage = () => (
 );
 
 export default ComingSoon;
+
