@@ -11,10 +11,12 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.0.1",
+    "@capacitor/app": "^8.0.0",
     "@capacitor/cli": "^8.0.1",
     "@capacitor/core": "^8.0.1",
     "@capacitor/screen-orientation": "^8.0.0",
     "@capacitor/status-bar": "^8.0.0",
+    "@capacitor/toast": "^8.0.0",
     "@supabase/supabase-js": "^2.91.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.28.1",
@@ -26,6 +28,7 @@
     "react-use": "^17.6.0"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.39.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
