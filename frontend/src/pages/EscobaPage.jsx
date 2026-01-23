@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Board from '../components/Board';
 import Sidebar from '../components/Sidebar';
 import { useGame } from '../hooks/useGame';
@@ -19,6 +19,7 @@ function EscobaPage() {
 }
 
 function EscobaContent({ gameStarted, setGameStarted }) {
+    const navigate = useNavigate();
     const [mode, setMode] = useState('single');
     const [difficulty, setDifficulty] = useState('normal');
     const [playerCount, setPlayerCount] = useState(2);
@@ -49,12 +50,12 @@ function EscobaContent({ gameStarted, setGameStarted }) {
             {!gameStarted ? (
                 <div className="m-auto flex flex-col items-center justify-center space-y-4 sm:space-y-8 glass-panel p-6 sm:p-16 rounded-[30px] sm:rounded-[40px] shadow-2xl border border-white/10 relative overflow-hidden backdrop-blur-2xl w-[95%] max-w-[600px] my-8">
                     {/* Back to Menu */}
-                    <Link
-                        to="/"
-                        className="absolute top-4 left-4 sm:top-6 sm:left-6 text-white/40 hover:text-white transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-widest"
+                    <button
+                        onClick={() => navigate('/')}
+                        className="absolute top-4 left-4 sm:top-6 sm:left-6 text-white/60 hover:text-white transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-widest bg-black/20 px-3 py-2 rounded-xl backdrop-blur-md border border-white/10 z-20"
                     >
                         <ArrowLeft size={14} /> Menú
-                    </Link>
+                    </button>
 
                     {/* Background Elements */}
                     <div className="absolute -top-24 -left-24 w-48 h-48 bg-yellow-500/20 rounded-full blur-3xl" />
