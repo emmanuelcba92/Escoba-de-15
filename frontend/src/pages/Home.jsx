@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Clock, Sparkles } from 'lucide-react';
+import { X, Clock } from 'lucide-react';
 
 // Iconos de baraja española
 const OrosIcon = ({ size = 24, className = '' }) => (

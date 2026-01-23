@@ -1,7 +1,7 @@
 import React from 'react';
-import clsx from 'clsx';
 
-const Card = ({ card, onClick, isSelected, isPlayable, hidden }) => {
+
+const Card = ({ card, onClick, isSelected, hidden }) => {
     const { suit, value } = card;
 
     // Configuration
