@@ -154,7 +154,21 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                                     key={card.id}
                                     value={card}
                                     dragListener={gamePhase === 'playing'}
-                                    className="relative flex-shrink-0 cursor-grab active:cursor-grabbing transition-transform"
+                                    layout
+                                    transition={{
+                                        type: "spring",
+                                        stiffness: 300,
+                                        damping: 30,
+                                        mass: 0.8
+                                    }}
+                                    whileDrag={{
+                                        scale: 1.08,
+                                        rotate: 3,
+                                        zIndex: 50,
+                                        boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
+                                    }}
+                                    className="relative flex-shrink-0 cursor-grab active:cursor-grabbing"
+                                    style={{ touchAction: "none" }}
                                 >
                                     <div
                                         onClick={() => {
