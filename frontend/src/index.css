@@ -88,25 +88,41 @@ body {
   padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
 }
 
-@media (max-height: 500px) {
+/* Landscape mode - general adjustments */
+@media (orientation: landscape) and (max-height: 500px) {
   .card-responsive {
-    transform: scale(0.7);
+    transform: scale(0.65);
+    transform-origin: center;
   }
 
   .hand-responsive {
-    transform: scale(0.8);
-    margin-bottom: -1rem;
+    transform: scale(0.75);
+    transform-origin: center bottom;
   }
 }
 
-@media (max-height: 400px) {
+/* Extra small landscape (very short screens) */
+@media (orientation: landscape) and (max-height: 400px) {
   .card-responsive {
-    transform: scale(0.6);
+    transform: scale(0.55);
+    transform-origin: center;
   }
 
   .hand-responsive {
-    transform: scale(0.7);
-    margin-bottom: -2rem;
+    transform: scale(0.65);
+    transform-origin: center bottom;
+  }
+}
+
+/* Portrait mode on small phones */
+@media (orientation: portrait) and (max-width: 400px) {
+  .card-responsive {
+    transform: scale(0.85);
+    transform-origin: center;
+  }
+
+  .hand-responsive {
+    transform: scale(0.9);
   }
 }
 
@@ -117,4 +133,13 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Shadow glow effects */
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+}
+
+.shadow-glow-yellow {
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
 }
