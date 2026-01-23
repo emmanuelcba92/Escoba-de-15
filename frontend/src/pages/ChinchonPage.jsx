@@ -6,7 +6,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, User as UserIcon, ArrowLeft, Home, Trophy } from 'lucide-react';
+import { Users, User as UserIcon, ArrowLeft, Home, Trophy, Clock } from 'lucide-react';
 
 function ChinchonPage() {
     const [gameStarted, setGameStarted] = useState(false);
@@ -21,6 +21,7 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
     const navigate = useNavigate();
     const [mode, setMode] = useState('single');
     const [playerCount, setPlayerCount] = useState(2);
+    const [difficulty, setDifficulty] = useState('normal');
 
     return (
         <div className="h-screen w-screen bg-green-900 overflow-hidden flex font-sans select-none overflow-y-auto">
@@ -29,7 +30,7 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
                     {/* Back to Menu */}
                     <button
                         onClick={() => navigate('/')}
-                        className="absolute top-4 left-4 sm:top-6 sm:left-6 text-white/60 hover:text-white transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-widest bg-black/20 px-3 py-2 rounded-xl backdrop-blur-md border border-white/10 z-20"
+                        className="absolute top-4 left-4 sm:top-6 sm:left-6 text-white/40 hover:text-white transition-colors flex items-center gap-2 text-xs font-bold uppercase tracking-widest bg-black/20 px-3 py-2 rounded-xl backdrop-blur-md border border-white/10 z-20"
                     >
                         <ArrowLeft size={14} /> Menú
                     </button>
@@ -55,8 +56,8 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
                                         key={n}
                                         onClick={() => setPlayerCount(n)}
                                         className={`py-2 sm:py-3 text-[9px] sm:text-[11px] font-bold uppercase rounded-xl border transition-all flex items-center justify-center gap-1 sm:gap-2 ${playerCount === n
-                                                ? 'bg-white text-green-950 border-white shadow-lg'
-                                                : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                                            ? 'bg-white text-green-950 border-white shadow-lg'
+                                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
                                             }`}
                                     >
                                         <Users size={12} />
@@ -66,18 +67,37 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
                             </div>
                         </div>
 
+                        {/* Difficulty selector (show only in single player) */}
+                        <div className="space-y-2">
+                            <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/40 ml-1">Dificultad</label>
+                            <div className="grid grid-cols-3 gap-2">
+                                {['easy', 'normal', 'hard'].map((d) => (
+                                    <button
+                                        key={d}
+                                        onClick={() => setDifficulty(d)}
+                                        className={`py-2 sm:py-3 text-[9px] sm:text-[11px] font-bold uppercase rounded-xl border transition-all ${difficulty === d
+                                            ? 'bg-yellow-500 text-green-950 border-yellow-400 shadow-lg'
+                                            : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                                            }`}
+                                    >
+                                        {d === 'easy' ? 'Fácil' : d === 'normal' ? 'Normal' : 'Difícil'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         {/* Game Modes */}
                         <div className="grid grid-cols-1 gap-3">
                             <button
                                 onClick={() => { setMode('single'); setGameStarted(true); }}
-                                className="btn-primary py-4 sm:py-5 flex items-center justify-center gap-3 text-sm sm:text-base"
+                                className="btn-primary py-4 sm:py-5 flex items-center justify-center gap-3 text-sm sm:text-base transition-all active:scale-[0.98]"
                             >
                                 <UserIcon size={18} />
                                 VS CPU
                             </button>
                             <button
                                 onClick={() => { setMode('local'); setGameStarted(true); }}
-                                className="btn-secondary py-4 sm:py-5 flex items-center justify-center gap-3 border-white/20 hover:bg-white/10 text-sm sm:text-base"
+                                className="btn-secondary py-4 sm:py-5 flex items-center justify-center gap-3 border-white/20 hover:bg-white/10 text-white/80 text-sm sm:text-base transition-all active:scale-[0.98]"
                             >
                                 <Users size={18} />
                                 MULTIJUGADOR LOCAL
@@ -102,14 +122,14 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
                     </div>
                 </div>
             ) : (
-                <GameRoom mode={mode} playerCount={playerCount} onExit={() => setGameStarted(false)} />
+                <GameRoom mode={mode} playerCount={playerCount} difficulty={difficulty} onExit={() => setGameStarted(false)} />
             )}
         </div>
     );
 }
 
-const GameRoom = ({ mode, playerCount, onExit }) => {
-    const game = useChinchonGame(mode, playerCount);
+const GameRoom = ({ mode, playerCount, difficulty, onExit }) => {
+    const game = useChinchonGame(mode, playerCount, difficulty);
     const { width, height } = useWindowSize();
     const [showConfetti, setShowConfetti] = useState(false);
 
@@ -236,6 +256,7 @@ const GameRoom = ({ mode, playerCount, onExit }) => {
                     onDiscardCard={game.discardCard}
                     onCloseHand={game.closeHand}
                     onCardClick={game.toggleCardSelection}
+                    onReorderHand={game.reorderHand}
                 />
             </div>
         </>

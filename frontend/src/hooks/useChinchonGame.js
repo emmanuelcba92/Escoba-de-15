@@ -5,10 +5,12 @@ import {
     canClose,
     calculateScore,
     isChinchon,
-    canAddToGame
+    canAddToGame,
+    tryToAppendCards
 } from '../game/chinchonEngine';
+import { executeBotTurn } from '../game/chinchonAI';
 
-export const useChinchonGame = (gameMode = 'single', playerCount = 2) => {
+export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty = 'normal') => {
     const [deck, setDeck] = useState([]);
     const [discardPile, setDiscardPile] = useState([]);
     const [players, setPlayers] = useState([]);
@@ -28,8 +30,8 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2) => {
                 id: `p${i + 1}`,
                 name: i === 0 ? 'Tú' : `Jugador ${i + 1}`,
                 hand: [],
-                games: [], // Juegos formados
-                looseCards: [], // Cartas sueltas
+                games: [],
+                looseCards: [],
                 totalScore: 0,
                 roundScore: 0,
                 isBot: gameMode === 'single' && i > 0,
@@ -39,10 +41,26 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2) => {
         return p;
     }, [playerCount, gameMode]);
 
+    // Función para pasar al siguiente jugador
+    const nextPlayer = useCallback(() => {
+        setCurrentPlayerIdx(prev => {
+            let nextIdx = (prev + 1) % playerCount;
+            // Buscar el siguiente no eliminado
+            // Evitar bucle infinito si todos eliminados (no debería pasar)
+            let guard = 0;
+            while (players[nextIdx]?.isEliminated && guard < playerCount) {
+                nextIdx = (nextIdx + 1) % playerCount;
+                guard++;
+            }
+            return nextIdx;
+        });
+        setTurnAction('draw');
+    }, [playerCount, players]);
+
     // Iniciar nueva ronda
     const startRound = useCallback(() => {
         const activePlayers = players.filter(p => !p.isEliminated);
-        if (activePlayers.length === 1) {
+        if (activePlayers.length === 1 && players.length > 0) {
             setGamePhase('gameEnd');
             setGameLog(prev => [`¡${activePlayers[0].name} ganó la partida!`, ...prev]);
             return;
@@ -50,7 +68,6 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2) => {
 
         let newDeck = shuffleDeck(createChinchonDeck());
 
-        // Repartir 7 cartas a cada jugador
         const updatedPlayers = players.map(p => {
             if (p.isEliminated) return p;
             return {
@@ -62,7 +79,6 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2) => {
             };
         });
 
-        // Primera carta al descarte
         const firstDiscard = newDeck.shift();
 
         setDeck(newDeck);
@@ -75,7 +91,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2) => {
         setGameLog(prev => [`Ronda ${round} iniciada.`, ...prev]);
     }, [players, round]);
 
-    // Inicializar juego
+    // Inicializar juego base
     useEffect(() => {
         if (gamePhase === 'setup') {
             const initialPlayers = createPlayers();
@@ -84,79 +100,85 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2) => {
         }
     }, [gamePhase, createPlayers]);
 
-    // Función para tomar carta
-    const drawCard = (fromDeck = true) => {
-        if (turnAction !== 'draw') return;
+    // Tomar carta
+    const drawCard = useCallback((fromDeck = true) => {
+        if (turnAction !== 'draw' || gamePhase !== 'playing') return;
 
-        const currentPlayer = players[currentPlayerIdx];
-        let drawnCard;
-        let newDeck = [...deck];
-        let newDiscard = [...discardPile];
+        setPlayers(currentPlayers => {
+            let drawnCard;
+            let updatedDeck = [...deck];
+            let updatedDiscard = [...discardPile];
 
-        if (fromDeck) {
-            if (newDeck.length === 0) {
-                // Mezclar descarte (excepto última carta)
-                const lastCard = newDiscard.pop();
-                newDeck = shuffleDeck(newDiscard);
-                newDiscard = [lastCard];
+            if (fromDeck) {
+                if (updatedDeck.length === 0) {
+                    const lastCard = updatedDiscard.pop();
+                    updatedDeck = shuffleDeck(updatedDiscard);
+                    updatedDiscard = [lastCard];
+                }
+                drawnCard = updatedDeck.shift();
+                setDeck(updatedDeck);
+                setDiscardPile(updatedDiscard);
+            } else {
+                drawnCard = updatedDiscard.pop();
+                setDiscardPile(updatedDiscard);
             }
-            drawnCard = newDeck.shift();
-        } else {
-            drawnCard = newDiscard.pop();
-        }
 
-        const updatedPlayers = players.map((p, i) => {
-            if (i === currentPlayerIdx) {
-                return { ...p, hand: [...p.hand, drawnCard] };
-            }
-            return p;
+            const newPlayers = currentPlayers.map((p, i) => {
+                if (i === currentPlayerIdx) {
+                    return { ...p, hand: [...p.hand, drawnCard] };
+                }
+                return p;
+            });
+
+            setTurnAction('discard');
+            setGameLog(prev => [`${newPlayers[currentPlayerIdx].name} tomó una carta.`, ...prev]);
+            return newPlayers;
         });
+    }, [currentPlayerIdx, deck, discardPile, turnAction, gamePhase]);
 
-        setDeck(newDeck);
-        setDiscardPile(newDiscard);
-        setPlayers(updatedPlayers);
-        setTurnAction('discard');
-        setGameLog(prev => [`${currentPlayer.name} tomó una carta.`, ...prev]);
-    };
+    // Descartar carta
+    const discardCard = useCallback((card) => {
+        if (turnAction !== 'discard' || gamePhase !== 'playing') return;
 
-    // Función para descartar carta
-    const discardCard = (card) => {
-        if (turnAction !== 'discard') return;
+        setPlayers(currentPlayers => {
+            const newPlayers = currentPlayers.map((p, i) => {
+                if (i === currentPlayerIdx) {
+                    return { ...p, hand: p.hand.filter(c => c.id !== card.id) };
+                }
+                return p;
+            });
 
-        const currentPlayer = players[currentPlayerIdx];
-        const newHand = currentPlayer.hand.filter(c => c.id !== card.id);
+            setDiscardPile(prev => [...prev, card]);
 
-        const updatedPlayers = players.map((p, i) => {
-            if (i === currentPlayerIdx) {
-                return { ...p, hand: newHand };
-            }
-            return p;
+            // Log logic
+            setGameLog(prev => [`${newPlayers[currentPlayerIdx].name} descartó.`, ...prev]);
+
+            // Move to next player
+            setTimeout(() => nextPlayer(), 500);
+
+            return newPlayers;
         });
+    }, [currentPlayerIdx, turnAction, gamePhase, nextPlayer]);
 
-        setPlayers(updatedPlayers);
-        setDiscardPile(prev => [...prev, card]);
-        setTurnAction('draw');
-
-        // Siguiente jugador
-        nextPlayer();
-    };
-
-    // Siguiente jugador
-    const nextPlayer = () => {
-        let nextIdx = (currentPlayerIdx + 1) % playerCount;
-        while (players[nextIdx].isEliminated) {
-            nextIdx = (nextIdx + 1) % playerCount;
-        }
-        setCurrentPlayerIdx(nextIdx);
-    };
+    // Reordenar mano
+    const reorderHand = useCallback((newHand) => {
+        setPlayers(prev => prev.map((p, i) => {
+            if (i === 0) return { ...p, hand: newHand };
+            return p;
+        }));
+    }, []);
 
     // Cerrar la mano
-    const closeHand = () => {
+    const closeHand = useCallback(() => {
+        if (turnAction !== 'discard' || gamePhase !== 'playing') return;
+
         const currentPlayer = players[currentPlayerIdx];
         const analysis = findBestCombination(currentPlayer.hand);
 
         if (!canClose(currentPlayer.hand, analysis.games, analysis.looseCards)) {
-            alert('No podés cerrar con esta combinación. Necesitás todas tus cartas en juegos o máximo 1 carta suelta menor a 3.');
+            if (currentPlayerIdx === 0) {
+                alert('No podés cerrar con esta combinación. Necesitás todas tus cartas en juegos o máximo 1 carta suelta menor a 3.');
+            }
             return;
         }
 
@@ -164,91 +186,113 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2) => {
         setGamePhase('showing');
         setGameLog(prev => [`${currentPlayer.name} cerró la mano.`, ...prev]);
 
-        // Calcular puntajes
-        setTimeout(() => calculateRoundScores(), 1000);
-    };
+        // Calcular puntajes después de un Delay para mostrar
+        setTimeout(() => calculateRoundScores(), 1500);
+    }, [currentPlayerIdx, players, turnAction, gamePhase]);
 
-    // Calcular puntajes de la ronda
-    const calculateRoundScores = () => {
-        const updatedPlayers = players.map((p, idx) => {
-            if (p.isEliminated) return p;
+    // Calcular puntajes
+    const calculateRoundScores = useCallback(() => {
+        setPlayers(currentPlayers => {
+            const winnerIdx = closingPlayerIdx;
+            const winner = currentPlayers[winnerIdx];
+            if (!winner) return currentPlayers;
 
-            const analysis = findBestCombination(p.hand);
-            const score = calculateScore(analysis.games, analysis.looseCards, idx === closingPlayerIdx);
+            const winnerAnalysis = findBestCombination(winner.hand);
+            const winnerGames = winnerAnalysis.games;
 
-            // Verificar chinchón sin comodín (victoria instantánea)
-            if (score === -1000) {
+            const updatedPlayers = currentPlayers.map((p, idx) => {
+                if (p.isEliminated) return p;
+
+                let analysis = findBestCombination(p.hand);
+                let currentLoose = analysis.looseCards;
+                let currentGames = analysis.games;
+
+                if (idx !== winnerIdx && winnerGames.length > 0) {
+                    const winnerGamesCopy = winnerGames.map(g => [...g]);
+                    const { newLooseCards } = tryToAppendCards([...currentLoose], winnerGamesCopy);
+                    currentLoose = newLooseCards;
+                }
+
+                const score = calculateScore(currentGames, currentLoose, idx === winnerIdx);
+
+                // Victoria instantánea (Chinchón sin comodín)
+                if (score === -1000) {
+                    return {
+                        ...p,
+                        games: currentGames,
+                        looseCards: currentLoose,
+                        roundScore: 0,
+                        totalScore: 0,
+                        wonGame: true
+                    };
+                }
+
+                const newTotal = p.totalScore + score;
                 return {
                     ...p,
-                    games: analysis.games,
-                    looseCards: analysis.looseCards,
-                    roundScore: 0,
-                    totalScore: 0,
-                    wonGame: true
+                    games: currentGames,
+                    looseCards: currentLoose,
+                    roundScore: score,
+                    totalScore: newTotal,
+                    isEliminated: newTotal >= 100
                 };
+            });
+
+            setGamePhase('roundEnd');
+            const winnerPlayer = updatedPlayers.find(p => p.wonGame);
+            if (winnerPlayer) {
+                setGamePhase('gameEnd');
+                setGameLog(prev => [`¡${winnerPlayer.name} hizo CHINCHÓN y ganó!`, ...prev]);
             }
 
-            const newTotal = p.totalScore + score;
-
-            return {
-                ...p,
-                games: analysis.games,
-                looseCards: analysis.looseCards,
-                roundScore: score,
-                totalScore: newTotal,
-                isEliminated: newTotal >= 100
-            };
+            return updatedPlayers;
         });
+    }, [closingPlayerIdx]);
 
-        setPlayers(updatedPlayers);
-        setGamePhase('roundEnd');
+    // Bot Turn Logic
+    useEffect(() => {
+        if (gamePhase !== 'playing') return;
 
-        // Verificar si alguien ganó con chinchón
-        const winner = updatedPlayers.find(p => p.wonGame);
-        if (winner) {
-            setGamePhase('gameEnd');
-            setGameLog(prev => [`¡${winner.name} hizo CHINCHÓN sin comodín y ganó la partida!`, ...prev]);
+        const currentPlayer = players[currentPlayerIdx];
+        if (currentPlayer?.isBot && !currentPlayer.isEliminated) {
+            const botThinking = setTimeout(() => {
+                const botDecision = executeBotTurn({
+                    players,
+                    deck,
+                    discardPile
+                }, currentPlayerIdx, difficulty);
+
+                if (turnAction === 'draw') {
+                    drawCard(botDecision.draw === 'deck');
+                } else if (turnAction === 'discard') {
+                    if (botDecision.close) {
+                        closeHand();
+                    } else {
+                        discardCard(botDecision.discard);
+                    }
+                }
+            }, 1500);
+
+            return () => clearTimeout(botThinking);
         }
-    };
+    }, [currentPlayerIdx, gamePhase, turnAction, players, deck, discardPile, difficulty, drawCard, discardCard, closeHand]);
 
-    // Siguiente ronda
-    const nextRound = () => {
+    const nextRound = useCallback(() => {
         setRound(prev => prev + 1);
         startRound();
-    };
+    }, [startRound]);
 
-    // Toggle selección de carta
-    const toggleCardSelection = (card) => {
-        const isSelected = selectedCards.some(c => c.id === card.id);
-        if (isSelected) {
-            setSelectedCards(prev => prev.filter(c => c.id !== card.id));
-        } else {
-            setSelectedCards(prev => [...prev, card]);
-        }
-    };
+    const toggleCardSelection = useCallback((card) => {
+        setSelectedCards(prev => {
+            const isSelected = prev.some(c => c.id === card.id);
+            return isSelected ? prev.filter(c => c.id !== card.id) : [...prev, card];
+        });
+    }, []);
 
     return {
-        // Estado
-        deck,
-        discardPile,
-        players,
-        currentPlayerIdx,
-        gamePhase,
-        selectedCards,
-        turnAction,
-        gameLog,
-        round,
-        closingPlayerIdx,
-
-        // Acciones
-        startRound,
-        drawCard,
-        discardCard,
-        closeHand,
-        nextRound,
-        toggleCardSelection,
-
-        // Utilidades
-        deckSize: deck.length
+        deck, discardPile, players, currentPlayerIdx, gamePhase,
+        selectedCards, turnAction, gameLog, round, closingPlayerIdx,
+        startRound, drawCard, discardCard, closeHand, nextRound,
+        toggleCardSelection, reorderHand, deckSize: deck.length
     };
 };

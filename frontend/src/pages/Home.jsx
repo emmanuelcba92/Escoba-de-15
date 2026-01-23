@@ -207,7 +207,7 @@ const Home = () => {
                         animate={{ opacity: 1, y: 0 }}
                         className="text-5xl sm:text-7xl font-black text-white italic tracking-tighter mb-4"
                     >
-                        Mesa de
+                        Juegos de
                         <span className="block text-yellow-500 text-glow">Naipes</span>
                     </motion.h1>
                     <motion.p

@@ -71,24 +71,141 @@ export const isChinchon = (cards) => {
 };
 
 /**
+ * Genera todas las combinaciones de k elementos de un array
+ */
+const getCombinations = (arr, k) => {
+    if (k === 0) return [[]];
+    if (arr.length === 0) return [];
+
+    const [first, ...rest] = arr;
+    const withFirst = getCombinations(rest, k - 1).map(combo => [first, ...combo]);
+    const withoutFirst = getCombinations(rest, k);
+
+    return [...withFirst, ...withoutFirst];
+};
+
+/**
+ * Encuentra todas las escaleras posibles en un conjunto de cartas
+ */
+const findAllRuns = (cards) => {
+    const runs = [];
+    const suits = ['oros', 'copas', 'espadas', 'bastos'];
+
+    for (const suit of suits) {
+        const suitCards = cards.filter(c => c.suit === suit || c.isJoker);
+        const jokers = suitCards.filter(c => c.isJoker);
+        const normal = suitCards.filter(c => !c.isJoker).sort((a, b) => a.value - b.value);
+
+        // Probar todas las combinaciones de longitud 3+
+        for (let start = 0; start < normal.length; start++) {
+            for (let end = start + 1; end <= normal.length; end++) {
+                const subset = normal.slice(start, end);
+
+                // Intentar con diferentes cantidades de comodines
+                for (let jokerCount = 0; jokerCount <= jokers.length; jokerCount++) {
+                    const testRun = [...subset, ...jokers.slice(0, jokerCount)];
+                    if (testRun.length >= 3 && isValidRun(testRun)) {
+                        runs.push(testRun);
+                    }
+                }
+            }
+        }
+    }
+
+    return runs;
+};
+
+/**
+ * Encuentra todos los tríos/cuartetos posibles en un conjunto de cartas
+ */
+const findAllSets = (cards) => {
+    const sets = [];
+    const values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+    for (const value of values) {
+        const valueCards = cards.filter(c => c.value === value || c.isJoker);
+
+        // Probar combinaciones de 3 y 4 cartas
+        for (let size = 3; size <= Math.min(4, valueCards.length); size++) {
+            const combinations = getCombinations(valueCards, size);
+            for (const combo of combinations) {
+                if (isValidSet(combo)) {
+                    sets.push(combo);
+                }
+            }
+        }
+    }
+
+    return sets;
+};
+
+/**
+ * Encuentra todos los juegos válidos posibles (escaleras y tríos) en un conjunto de cartas
+ */
+const findAllPossibleGames = (cards) => {
+    const games = [];
+    games.push(...findAllRuns(cards));
+    games.push(...findAllSets(cards));
+    return games;
+};
+
+/**
  * Encuentra todos los juegos posibles en una mano
  * @param {Array} hand - Cartas en la mano
  * @returns {Object} { games: [], looseCards: [], score: number }
  */
 export const findBestCombination = (hand) => {
-    // TODO: Implementar algoritmo de búsqueda de mejor combinación
-    // Por ahora devolvemos estructura básica
+    if (hand.length === 0) {
+        return { games: [], looseCards: [], score: 0 };
+    }
 
-    const allCards = [...hand];
-    const games = [];
-    const looseCards = [...hand];
+    const allPossibleGames = findAllPossibleGames(hand);
 
-    // Calcular puntos de cartas sueltas
-    const score = looseCards.reduce((sum, card) => {
-        return sum + (card.isJoker ? JOKER_VALUE : card.value);
-    }, 0);
+    if (allPossibleGames.length === 0) {
+        const score = hand.reduce((sum, card) => sum + (card.isJoker ? JOKER_VALUE : card.value), 0);
+        return { games: [], looseCards: hand, score };
+    }
 
-    return { games, looseCards, score };
+    let bestCombination = {
+        games: [],
+        looseCards: hand,
+        score: hand.reduce((sum, card) => sum + (card.isJoker ? JOKER_VALUE : card.value), 0)
+    };
+
+    const tryAllCombinations = (remainingCards, selectedGames) => {
+        const usedCards = selectedGames.flat();
+        const unusedCards = remainingCards.filter(c =>
+            !usedCards.some(used => used.id === c.id)
+        );
+
+        const looseScore = unusedCards.reduce((sum, card) => {
+            return sum + (card.isJoker ? JOKER_VALUE : card.value);
+        }, 0);
+
+        if (looseScore < bestCombination.score ||
+            (looseScore === bestCombination.score && selectedGames.length > bestCombination.games.length)) {
+            bestCombination = {
+                games: selectedGames,
+                looseCards: unusedCards,
+                score: looseScore
+            };
+        }
+
+        const possibleNextGames = findAllPossibleGames(unusedCards);
+        for (const game of possibleNextGames) {
+            const gameKey = game.map(c => c.id).sort().join(',');
+            const alreadyUsed = selectedGames.some(g =>
+                g.map(c => c.id).sort().join(',') === gameKey
+            );
+            if (!alreadyUsed) {
+                tryAllCombinations(remainingCards, [...selectedGames, game]);
+            }
+        }
+    };
+
+    tryAllCombinations(hand, []);
+
+    return bestCombination;
 };
 
 /**
@@ -144,6 +261,40 @@ export const calculateScore = (games, looseCards, isClosed = false) => {
     }, 0);
 
     return score;
+};
+
+/**
+ * Intenta acomodar cartas sueltas en juegos de otros jugadores
+ * @param {Array} looseCards - Cartas sueltas del jugador
+ * @param {Array} otherGames - Juegos de otros jugadores (especialmente del que cerró)
+ * @returns {Object} { newLooseCards: [], appendedCards: [] }
+ */
+export const tryToAppendCards = (looseCards, otherGames) => {
+    let currentLoose = [...looseCards];
+    const appended = [];
+
+    // Intentar acomodar cada carta suelta
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (let i = 0; i < currentLoose.length; i++) {
+            const card = currentLoose[i];
+            for (let j = 0; j < otherGames.length; j++) {
+                const game = otherGames[j];
+                if (canAddToGame(card, game)) {
+                    // Se puede agregar!
+                    appended.push({ card, gameIndex: j });
+                    game.push(card); // Modificar el juego para siguientes iteraciones
+                    currentLoose.splice(i, 1);
+                    changed = true;
+                    break;
+                }
+            }
+            if (changed) break;
+        }
+    }
+
+    return { newLooseCards: currentLoose, appendedCards: appended };
 };
 
 /**
