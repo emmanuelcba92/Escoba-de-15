@@ -147,15 +147,27 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                                 </div>
                                 <div className="bg-white/5 border-2 border-dashed border-white/20 rounded-3xl p-6 flex flex-col items-center gap-4">
                                     <span className="text-6xl font-black tracking-[0.2em] text-yellow-500 drop-shadow-[0_0_20px_rgba(234,179,8,0.3)]">{game.roomId}</span>
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(game.roomId);
-                                            alert("¡Código copiado!");
-                                        }}
-                                        className="w-full py-3 bg-white text-green-950 rounded-xl font-bold text-xs uppercase hover:bg-yellow-500 transition-colors"
-                                    >
-                                        Copiar Código
-                                    </button>
+                                    <div className="flex gap-2 w-full">
+                                        <button
+                                            onClick={() => {
+                                                const url = `${window.location.origin}${window.location.pathname}?room=${game.roomId}`;
+                                                navigator.clipboard.writeText(url);
+                                                alert("¡Enlace de invitación copiado!");
+                                            }}
+                                            className="flex-1 py-3 bg-white text-green-950 rounded-xl font-bold text-xs uppercase hover:bg-yellow-500 transition-colors"
+                                        >
+                                            Compartir Enlace
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(game.roomId);
+                                                alert("¡Código copiado!");
+                                            }}
+                                            className="px-4 py-3 bg-white/10 text-white rounded-xl font-bold text-xs uppercase hover:bg-white/20 transition-colors"
+                                        >
+                                            Código
+                                        </button>
+                                    </div>
                                 </div>
                                 <p className="text-white/30 text-[10px] leading-relaxed px-4">Tu oponente debe ingresar el mismo código. La partida comenzará automáticamente.</p>
                             </div>

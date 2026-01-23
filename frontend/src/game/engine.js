@@ -110,7 +110,22 @@ export const calculateMatchPoints = (players, playMode = 'individual') => {
     }
 
     // 5. Setentas
-    const getSetentaValue = (v) => (typeof v === 'string' || v > 7) ? 0 : v;
+    const getSetentaValue = (v) => {
+        const values = {
+            7: 21,
+            6: 18,
+            1: 16,
+            5: 15,
+            4: 14,
+            3: 13,
+            2: 12,
+            10: 10,
+            11: 10,
+            12: 10
+        };
+        return values[v] || 0;
+    };
+
     const calcSetentaSum = (cards) => {
         const suits = ['oros', 'copas', 'espadas', 'bastos'];
         return suits.reduce((total, suit) => {

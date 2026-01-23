@@ -35,6 +35,16 @@ function AppContent({ gameStarted, setGameStarted }) {
     localStorage.setItem('escoba_player_name', playerName);
   }, [playerName]);
 
+  // Soporte para unirse vía URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('room');
+    if (room && room.length === 4) {
+      setRoomId(room.toUpperCase());
+      setIsJoining(true);
+    }
+  }, []);
+
   return (
     <div className="h-screen w-screen bg-green-900 overflow-hidden flex font-sans select-none overflow-y-auto">
       {!gameStarted ? (

@@ -104,8 +104,10 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     }, [playerCount, gameMode, playerName]);
 
     useEffect(() => {
-        setPlayers(createPlayersArr());
-    }, [playerCount, gameMode, playerName]);
+        if (gameMode !== 'multi') {
+            setPlayers(createPlayersArr());
+        }
+    }, [playerCount, gameMode, playerName, createPlayersArr]);
 
     // Supabase Multiplayer Setup
     useEffect(() => {
@@ -117,30 +119,39 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
             channel
                 .on('presence', { event: 'sync' }, () => {
                     const state = channel.presenceState();
-                    const playersInRoom = Object.keys(state);
-                    console.log('Players in room:', playersInRoom);
+                    const presenceEntries = Object.entries(state);
+                    console.log('Presence entries:', presenceEntries);
 
-                    if (playersInRoom.length === 0) return;
+                    if (presenceEntries.length === 0) return;
 
-                    // First player alphabetically is the host
-                    const sortedPlayers = [...playersInRoom].sort();
-                    const isHost = sortedPlayers[0] === playerName;
-                    const myIdx = sortedPlayers.indexOf(playerName);
+                    // Get all players with their joined_at timestamp and names
+                    const roomPlayers = presenceEntries.map(([key, presences]) => ({
+                        id: key,
+                        name: presences[0].name || key.split('_')[0],
+                        joinedAt: presences[0].joined_at
+                    })).sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
+
+                    console.log('Sorted room players:', roomPlayers);
+
+                    const myEntry = roomPlayers.find(p => p.id.startsWith(playerName + '_'));
+                    const isHost = roomPlayers[0]?.id === myEntry?.id;
+                    const myIdx = roomPlayers.findIndex(p => p.id === myEntry?.id);
 
                     setPlayerRole(isHost ? 'host' : 'guest');
                     setMyPlayerIdx(myIdx);
-                    myPlayerIdxRef.current = myIdx; // Update ref immediately
-                    console.log('My player index set to:', myIdx);
+                    myPlayerIdxRef.current = myIdx;
+                    console.log('My player index set to:', myIdx, 'Role:', isHost ? 'host' : 'guest');
 
-                    // When we have 2 players, the host starts the game
-                    if (playersInRoom.length >= 2) {
+                    // When we have enough players, the host starts the game
+                    if (roomPlayers.length >= playerCount) {
                         setWaitingForOpponent(false);
 
                         // Only host initializes the game, and only once
                         if (isHost && !gameInitializedRef.current) {
                             gameInitializedRef.current = true;
-                            console.log('Host starting game with players:', sortedPlayers);
-                            setTimeout(() => startRoundMulti(sortedPlayers, channel), 500);
+                            const playerNames = roomPlayers.map(p => p.name);
+                            console.log('Host starting game with player names:', playerNames);
+                            setTimeout(() => startRoundMulti(playerNames, channel), 500);
                         }
                     } else {
                         setWaitingForOpponent(true);
@@ -176,7 +187,11 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                 .subscribe(async (status) => {
                     console.log('Channel status:', status);
                     if (status === 'SUBSCRIBED') {
-                        await channel.track({ online_at: new Date().toISOString() });
+                        const uniqueId = `${playerName}_${Math.random().toString(36).substr(2, 4)}`;
+                        await channel.track({
+                            name: playerName,
+                            joined_at: new Date().toISOString()
+                        });
                     }
                 });
 
@@ -342,6 +357,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         let escobaMade = false;
         let logMsg = '';
 
+        let nextLastCapturerIdx = lastCapturerIdx;
         if (isDiscard) {
             newTable.push(cardPlayed);
             logMsg = `${player.name} tiró ${cardPlayed.value} de ${cardPlayed.suit}.`;
@@ -360,6 +376,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                 const velos = [...cardsCaptured, cardPlayed].filter(c => c.suit === 'oros' && [1, 7, 12].includes(c.value));
                 if (velos.length > 0) speak("Velo levantado");
             }
+            nextLastCapturerIdx = playerIdx;
             setLastCapturerIdx(playerIdx);
         }
 
@@ -422,7 +439,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                     setCurrentPlayerIdx((dealerIdx + 1) % playerCount);
                 }
             } else {
-                endRound(newPlayers, newTable, lastCapturerIdx);
+                endRound(newPlayers, newTable, nextLastCapturerIdx);
             }
         } else {
             setCurrentPlayerIdx((playerIdx + 1) % playerCount);
