@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Clock, Sparkles } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
 
 // Iconos de baraja española
 const OrosIcon = ({ size = 24, className = '' }) => (
@@ -188,36 +189,40 @@ const ComingSoonModal = ({ game, onClose }) => {
     );
 };
 
+
 const Home = () => {
     const [selectedGame, setSelectedGame] = useState(null);
+    const isNative = Capacitor.isNativePlatform();
 
     return (
-        <div className="min-h-screen bg-green-900 felt-bg overflow-y-auto">
+        <div className={`min-h-screen bg-green-900 felt-bg ${isNative ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'}`}>
             {/* Background Effects */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-yellow-500/10 rounded-full blur-[150px]" />
                 <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[150px]" />
             </div>
 
-            <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
+            <div className={`relative z-10 mx-auto px-4 ${isNative ? 'w-full h-full flex flex-col justify-center py-2' : 'max-w-6xl sm:px-6 py-12 sm:py-20'}`}>
                 {/* Header */}
-                <div className="text-center mb-12 sm:mb-16">
+                <div className={`${isNative ? 'text-center mb-4 flex-shrink-0' : 'text-center mb-12 sm:mb-16'}`}>
                     <motion.h1
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-4xl sm:text-6xl lg:text-7xl font-black text-white italic tracking-tighter mb-4"
+                        className={`${isNative ? 'text-3xl' : 'text-4xl sm:text-6xl lg:text-7xl'} font-black text-white italic tracking-tighter mb-1`}
                     >
                         Juegos de
                         <span className="block text-yellow-500 text-glow">Naipes</span>
                     </motion.h1>
-                    <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-white/40 text-base sm:text-xl max-w-md mx-auto"
-                    >
-                        Los clásicos juegos de cartas argentinos, en tu navegador
-                    </motion.p>
+                    {!isNative && (
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.2 }}
+                            className="text-white/40 text-base sm:text-xl max-w-md mx-auto"
+                        >
+                            Los clásicos juegos de cartas argentinos, en tu navegador
+                        </motion.p>
+                    )}
                 </div>
 
                 {/* Games Grid */}
@@ -225,7 +230,7 @@ const Home = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"
+                    className={`grid ${isNative ? 'grid-cols-2 gap-2 flex-1 content-center' : 'grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6'}`}
                 >
                     {games.map((game, index) => (
                         <motion.div
@@ -233,8 +238,35 @@ const Home = () => {
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 * index }}
+                            className={isNative ? 'h-full' : ''}
                         >
-                            <GameCard game={game} onClick={setSelectedGame} />
+                            <div
+                                onClick={() => {
+                                    if (game.available) {
+                                        // Navigate logic
+                                    } else {
+                                        setSelectedGame(game);
+                                    }
+                                }}
+                                className={`relative overflow-hidden rounded-2xl border transition-all h-full flex flex-col justify-between ${isNative ? 'p-3 bg-white/5 border-white/10' : '' // Custom condensed style for native
+                                    } ${!isNative ? '' : '' /* Existing GameCard uses specific styles */}`}
+                            >
+                                {/* We will render a simplified card content for native here to ensure fit */}
+                                {isNative ? (
+                                    <Link to={game.available ? game.path : '#'} className="flex flex-col h-full w-full" onClick={(e) => !game.available && e.preventDefault()}>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className={`p-2 rounded-xl bg-gradient-to-br ${game.color} shadow-lg`}>
+                                                <game.icon size={18} className="text-white" />
+                                            </div>
+                                            {game.available && <Sparkles size={12} className="text-green-400" />}
+                                        </div>
+                                        <h3 className="text-sm font-black text-white leading-tight">{game.name}</h3>
+                                        <div className="text-[10px] text-white/40 mt-1">{game.players}</div>
+                                    </Link>
+                                ) : (
+                                    <GameCard game={game} onClick={setSelectedGame} />
+                                )}
+                            </div>
                         </motion.div>
                     ))}
                 </motion.div>

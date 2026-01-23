@@ -1,0 +1,14 @@
+{
+  "appId": "com.naipes.app",
+  "appName": "Naipes Argentinos",
+  "webDir": "dist",
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "DARK"
+    },
+    "SplashScreen": {
+      "launchShowDuration": 1000
+    }
+  }
+}
