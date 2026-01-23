@@ -205,7 +205,7 @@ const Home = () => {
                     <motion.h1
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-5xl sm:text-7xl font-black text-white italic tracking-tighter mb-4"
+                        className="text-4xl sm:text-6xl lg:text-7xl font-black text-white italic tracking-tighter mb-4"
                     >
                         Juegos de
                         <span className="block text-yellow-500 text-glow">Naipes</span>
@@ -214,7 +214,7 @@ const Home = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.2 }}
-                        className="text-white/40 text-lg sm:text-xl max-w-md mx-auto"
+                        className="text-white/40 text-base sm:text-xl max-w-md mx-auto"
                     >
                         Los clásicos juegos de cartas argentinos, en tu navegador
                     </motion.p>

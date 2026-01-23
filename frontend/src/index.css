@@ -82,21 +82,38 @@ body {
 
 /* Landscape Optimizations */
 .safe-areas {
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
-  padding-top: max(0.5rem, env(safe-area-inset-top));
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+  padding-top: max(0.25rem, env(safe-area-inset-top));
+  padding-bottom: max(0.25rem, env(safe-area-inset-bottom));
 }
 
-@media (max-height: 480px) {
-  .felt-bg {
-    padding: 0.25rem !important;
+@media (max-height: 500px) {
+  .card-responsive {
+    scale: 0.7;
+  }
+
+  .hand-responsive {
+    scale: 0.8;
+    margin-bottom: -1rem;
+  }
+}
+
+@media (max-height: 400px) {
+  .card-responsive {
+    scale: 0.6;
+  }
+
+  .hand-responsive {
+    scale: 0.7;
+    margin-bottom: -2rem;
   }
 }
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

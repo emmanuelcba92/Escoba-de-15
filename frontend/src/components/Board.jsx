@@ -25,7 +25,7 @@ const PlayerHand = ({ player, isCurrent, onCardClick, selectedHandCard, isPlayer
     const isBot = player.isBot;
     return (
         <div className="flex flex-col items-center space-y-2 sm:space-y-4">
-            <div className="flex -space-x-12 sm:-space-x-8">
+            <div className="flex -space-x-12 sm:-space-x-8 hand-responsive">
                 {player.hand.map((card, i) => {
                     const isSelected = selectedHandCard?.id === card.id;
                     return (
@@ -275,7 +275,7 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                             {table.map((card) => {
                                 const isSelected = selectedTableCards.some(c => c.id === card.id);
                                 return (
-                                    <motion.div key={card.id} layout initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: isSelected ? 1 : 0.9, opacity: 1, y: isSelected ? -20 : 0, zIndex: isSelected ? 50 : 10 }} exit={{ scale: 0, opacity: 0 }} onClick={() => !privacyOverlay && onTableCardClick(card)} className="cursor-pointer relative scale-75 sm:scale-100">
+                                    <motion.div key={card.id} layout initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: isSelected ? 1 : 0.9, opacity: 1, y: isSelected ? -20 : 0, zIndex: isSelected ? 50 : 10 }} exit={{ scale: 0, opacity: 0 }} onClick={() => !privacyOverlay && onTableCardClick(card)} className="cursor-pointer relative card-responsive">
                                         <Card card={card} isSelected={isSelected} />
                                         {isSelected && <div className="absolute -top-2 -right-2 size-6 bg-yellow-500 rounded-full flex items-center justify-center animate-bounce shadow-lg ring-2 ring-green-900"><Play size={10} className="fill-green-950" /></div>}
                                     </motion.div>
@@ -285,7 +285,7 @@ const Board = ({ game, onHandCardClick, onTableCardClick, onPlayMove, onSoplo })
                     </div>
 
                     {deckSize > 0 && (
-                        <div className="flex-shrink-0 scale-75 sm:scale-100">
+                        <div className="flex-shrink-0 card-responsive">
                             <Deck count={deckSize} />
                         </div>
                     )}

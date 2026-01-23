@@ -35,7 +35,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     {player.name} {player.isEliminated && '💀'}
                 </div>
 
-                <div className="flex flex-wrap justify-center gap-1">
+                <div className="flex flex-wrap justify-center gap-1 hand-responsive">
                     {reveal ? (
                         <div className="flex flex-wrap justify-center gap-1">
                             {analysis.games.map((g, gi) => (
@@ -64,22 +64,22 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
     };
 
     return (
-        <div className="flex-1 h-full w-full flex flex-col items-center justify-between p-2 sm:p-6 relative felt-bg overflow-hidden text-white safe-areas">
+        <div className="flex-1 min-h-full w-full flex flex-col items-center justify-between p-2 sm:p-6 relative felt-bg overflow-hidden text-white safe-areas">
             {/* 1. Opponents Row (Responsive) */}
             <div className={`w-full flex justify-around items-start pt-2 sm:pt-10 ${players.length > 3 ? 'gap-1' : 'gap-4'}`}>
                 {players.slice(1).map((p, i) => renderOpponent(p, i))}
             </div>
 
             {/* 2. Central Area: Deck & Discard (Dynamic sizing) */}
-            <div className="flex-1 flex gap-4 sm:gap-10 items-center justify-center">
+            <div className="flex-1 flex gap-4 sm:gap-10 items-center justify-center my-2 sm:my-4">
                 {/* Mazo */}
                 <motion.div
                     whileHover={isMyTurn && turnAction === 'draw' ? { scale: 1.05 } : {}}
                     whileTap={isMyTurn && turnAction === 'draw' ? { scale: 0.95 } : {}}
                     onClick={() => isMyTurn && turnAction === 'draw' && onDrawCard(true)}
-                    className={`relative ${isMyTurn && turnAction === 'draw' ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'}`}
+                    className={`relative ${isMyTurn && turnAction === 'draw' ? 'cursor-pointer' : 'cursor-not-allowed opacity-80'} card-responsive`}
                 >
-                    <div className="relative scale-75 sm:scale-100">
+                    <div className="relative scale-90 sm:scale-100">
                         <div className="absolute inset-0 bg-blue-900 border border-white/10 rounded-xl translate-x-1 translate-y-1" />
                         <Card card={{}} hidden={true} />
                     </div>
@@ -94,9 +94,9 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     whileHover={isMyTurn && turnAction === 'draw' && discardPile.length > 0 ? { scale: 1.05 } : {}}
                     whileTap={isMyTurn && turnAction === 'draw' && discardPile.length > 0 ? { scale: 0.95 } : {}}
                     onClick={() => isMyTurn && turnAction === 'draw' && discardPile.length > 0 && onDrawCard(false)}
-                    className={`relative ${isMyTurn && turnAction === 'draw' && discardPile.length > 0 ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                    className={`relative ${isMyTurn && turnAction === 'draw' && discardPile.length > 0 ? 'cursor-pointer' : 'cursor-not-allowed'} card-responsive`}
                 >
-                    <div className="scale-75 sm:scale-100">
+                    <div className="scale-90 sm:scale-100">
                         {discardPile.length > 0 ? (
                             <Card card={discardPile[discardPile.length - 1]} />
                         ) : (
@@ -138,7 +138,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                 </div>
 
                 {/* Hand: Reorderable List */}
-                <div className="w-full max-w-lg px-2 overflow-x-auto no-scrollbar pb-2">
+                <div className="w-full max-w-lg px-2 overflow-x-auto no-scrollbar pb-2 hand-responsive">
                     <Reorder.Group
                         axis="x"
                         values={me?.hand || []}
