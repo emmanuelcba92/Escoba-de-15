@@ -39,7 +39,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
         return p;
     }, [playerCount, gameMode, playerName]);
 
-    // Función atómica para iniciar ronda
+    // Función atómica para iniciar ronda con IDs blindados
     const startRound = useCallback(() => {
         setGameState(prev => {
             const activePlayers = prev.players.filter(p => !p.isEliminated);
@@ -47,7 +47,13 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
                 return { ...prev, gamePhase: 'gameEnd' };
             }
 
-            let newDeck = shuffleDeck(createChinchonDeck());
+            // Generar mazo con IDs únicos por ronda para evitar colisiones residuales (ej: r1-5, r2-5)
+            let baseDeck = createChinchonDeck();
+            let newDeck = shuffleDeck(baseDeck).map(c => ({
+                ...c,
+                id: `r${prev.round}-${c.id}`
+            }));
+
             const updatedPlayers = prev.players.map(p => {
                 if (p.isEliminated) return p;
                 return {
@@ -90,6 +96,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
         setGameState(prev => ({ ...prev, gamePhase: 'playing' }));
     };
 
+    // Robar carta con limpieza global exhaustiva
     const drawCard = useCallback((fromDeck = true) => {
         if (turnAction !== 'draw' || gamePhase !== 'playing' || processingAction.current) return;
         processingAction.current = true;
@@ -115,39 +122,48 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
                 return prev;
             }
 
+            // LIMPIEZA GLOBAL: Asegurar que esta carta NO esté en ningún otro sitio antes de añadirla
+            const finalDeck = updatedDeck.filter(c => c.id !== drawnCard.id);
+            const finalDiscard = updatedDiscard.filter(c => c.id !== drawnCard.id);
+
             const newPlayers = prev.players.map((p, i) => {
+                // Quitamos la carta de cualquier mano (por si el estado estaba desincronizado)
+                const cleanHand = p.hand.filter(c => c.id !== drawnCard.id);
                 if (i === prev.currentPlayerIdx) {
-                    return { ...p, hand: [...p.hand, drawnCard] };
+                    return { ...p, hand: [...cleanHand, drawnCard] };
                 }
-                return p;
+                return { ...p, hand: cleanHand };
             });
 
             return {
                 ...prev,
-                deck: updatedDeck,
-                discardPile: updatedDiscard,
+                deck: finalDeck,
+                discardPile: finalDiscard,
                 players: newPlayers,
                 turnAction: 'discard',
                 gameLog: [`${newPlayers[prev.currentPlayerIdx].name} tomó una carta.`, ...prev.gameLog]
             };
         });
 
-        setTimeout(() => { processingAction.current = false; }, 300);
+        setTimeout(() => { processingAction.current = false; }, 400); // Pequeño cool-down
     }, [turnAction, gamePhase]);
 
+    // Descartar con limpieza global exhaustiva
     const discardCard = useCallback((card) => {
         if (turnAction !== 'discard' || gamePhase !== 'playing' || processingAction.current) return;
         processingAction.current = true;
 
         setGameState(prev => {
-            const newPlayers = prev.players.map((p, i) => {
-                if (i === prev.currentPlayerIdx) {
-                    return { ...p, hand: p.hand.filter(c => c.id !== card.id) };
-                }
-                return p;
-            });
+            // Aseguramos que la carta se quite de TODAS las manos y el mazo antes de ir al descarte
+            const newPlayers = prev.players.map((p) => ({
+                ...p,
+                hand: p.hand.filter(c => c.id !== card.id)
+            }));
 
-            // Lógica de siguiente turno
+            const cleanDeck = prev.deck.filter(c => c.id !== card.id);
+            const cleanDiscard = prev.discardPile.filter(c => c.id !== card.id);
+
+            // Logica de turno
             let nextIdx = (prev.currentPlayerIdx + 1) % playerCount;
             let guard = 0;
             while (newPlayers[nextIdx]?.isEliminated && guard < playerCount) {
@@ -162,8 +178,9 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
 
             return {
                 ...prev,
+                deck: cleanDeck,
                 players: newPlayers,
-                discardPile: [...prev.discardPile, card],
+                discardPile: [...cleanDiscard, card],
                 currentPlayerIdx: nextIdx,
                 turnAction: 'draw',
                 gamePhase: nextPhase,
@@ -197,7 +214,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
             return {
                 ...prev,
                 players: updatedPlayers,
-                discardPile: [...prev.discardPile, discardCard],
+                discardPile: [...prev.discardPile.filter(c => c.id !== discardCard.id), discardCard],
                 closingPlayerIdx: prev.currentPlayerIdx,
                 gamePhase: 'showing',
                 gameLog: [`${prev.players[prev.currentPlayerIdx].name} cerró la mano descartando el ${discardCard.value} de ${discardCard.suit}.`, ...prev.gameLog]
