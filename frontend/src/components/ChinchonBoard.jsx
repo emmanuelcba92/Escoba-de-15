@@ -72,7 +72,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
             </div>
 
             {/* 2. Central Area: Deck & Discard - Centered perfectly */}
-            <div className="flex-1 w-full flex items-center justify-center gap-6 sm:gap-12 pb-20">
+            <div className="flex-1 w-full flex items-center justify-center gap-8 sm:gap-16">
                 <motion.div
                     onClick={() => isMyTurn && turnAction === 'draw' && onDrawCard(true)}
                     className={`relative ${isMyTurn && turnAction === 'draw' ? 'cursor-pointer' : 'opacity-50'} card-responsive`}
@@ -106,16 +106,16 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                 </motion.div>
             </div>
 
-            {/* 3. Player Hand Area - Fixed at bottom */}
-            <div className="absolute bottom-0 left-0 right-0 w-full bg-gradient-to-t from-black/40 to-transparent flex flex-col items-center pb-6 pt-10">
+            {/* 3. Player Hand Area - Fixed at bottom with absolute positioning */}
+            <div className="absolute bottom-0 left-0 right-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col items-center pb-8 h-[240px] justify-end pointer-events-none">
 
                 {/* Floating Action Hint */}
-                <div className="mb-4">
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
                     <AnimatePresence>
                         {isMyTurn && (
                             <motion.div
                                 initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${turnAction === 'draw' ? 'bg-yellow-500 border-yellow-400 text-green-950' : 'bg-green-500 border-green-400 text-white shadow-lg'}`}
+                                className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border-2 ${turnAction === 'draw' ? 'bg-yellow-500 border-yellow-400 text-green-950' : 'bg-green-500 border-green-400 text-white shadow-xl'}`}
                             >
                                 {turnAction === 'draw' ? 'Tomá una carta' : 'Tirá una carta o Cerrá'}
                             </motion.div>
@@ -123,13 +123,13 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     </AnimatePresence>
                 </div>
 
-                {/* The Hand */}
-                <div className="w-full max-w-full overflow-x-auto no-scrollbar px-4 flex justify-center items-end h-[100px]">
+                {/* The Hand - Increased height and NO negative space for perfect drag detection */}
+                <div className="w-full max-w-full overflow-x-auto no-scrollbar px-4 flex justify-center items-end h-[160px] pointer-events-auto">
                     <Reorder.Group
                         axis="x"
                         values={me?.hand || []}
                         onReorder={onReorderHand}
-                        className="flex items-end justify-center -space-x-8 sm:-space-x-10 pb-2"
+                        className="flex items-end justify-center gap-2 sm:gap-4 pb-4 px-10"
                     >
                         {me?.hand.map((card) => {
                             const inGame = showGroups && myAnalysis.games.some(g => g.some(c => c.id === card.id));
@@ -139,7 +139,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                                     value={card}
                                     dragListener={gamePhase === 'playing'}
                                     layout
-                                    transition={{ type: "spring", stiffness: 400, damping: 40 }}
+                                    transition={{ type: "spring", stiffness: 600, damping: 50 }}
                                     whileDrag={{ scale: 1.1, zIndex: 100 }}
                                     className="relative flex-shrink-0 active:cursor-grabbing"
                                     style={{ touchAction: "none" }}
@@ -149,12 +149,15 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                                             if (isMyTurn && turnAction === 'discard') onDiscardCard(card);
                                             else onCardClick?.(card);
                                         }}
-                                        className={`transition-all ${inGame ? 'ring-2 ring-yellow-400 rounded-lg -translate-y-4 shadow-glow-yellow' : ''} ${selectedCards?.some(c => c.id === card.id) ? '-translate-y-2' : ''}`}
+                                        className={`transition-all ${inGame ? 'ring-2 ring-yellow-400 rounded-lg -translate-y-6 shadow-glow-yellow' : ''} ${selectedCards?.some(c => c.id === card.id) ? '-translate-y-4' : ''}`}
                                     >
-                                        <div className="scale-[0.85] origin-bottom sm:scale-100">
+                                        <div className="scale-95 sm:scale-100 origin-bottom">
                                             <Card card={card} isSelected={selectedCards?.some(c => c.id === card.id)} />
                                         </div>
                                     </div>
+                                    {inGame && (
+                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 w-2.5 h-2.5 rounded-full shadow-glow-yellow" />
+                                    )}
                                 </Reorder.Item>
                             );
                         })}
@@ -162,7 +165,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                 </div>
 
                 {/* Score Footer */}
-                <div className="mt-4 flex gap-8 text-[10px] font-black uppercase text-white/40">
+                <div className="mt-2 flex gap-12 text-[10px] font-black uppercase text-white/40 pointer-events-auto">
                     <span>Sueltas: <span className="text-white">{myAnalysis.score}</span></span>
                     <span>Total: <span className="text-white">{me?.totalScore || 0}</span></span>
                 </div>
@@ -179,7 +182,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     <motion.button
                         initial={{ scale: 0, x: "-50%" }} animate={{ scale: 1, x: "-50%" }}
                         onClick={onCloseHand}
-                        className="fixed bottom-32 left-1/2 px-8 py-3 bg-green-500 text-white font-black rounded-full uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/20 z-[60]"
+                        className="fixed bottom-40 left-1/2 px-8 py-3 bg-green-500 text-white font-black rounded-full uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/20 z-[60]"
                     >
                         Cerrar ({myAnalysis.score} pts)
                     </motion.button>
