@@ -152,14 +152,14 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     </AnimatePresence>
                 </div>
 
-                {/* The Hand - Fixed centering and overflow for 8 cards */}
-                <div className="w-full max-w-full overflow-x-auto no-scrollbar pointer-events-auto flex justify-center">
-                    <div className="min-w-max flex items-end px-12 h-[220px] pb-6">
+                {/* The Hand - Center if fits, scroll if not, no clipping */}
+                <div className="w-full max-w-full overflow-x-auto no-scrollbar pointer-events-auto">
+                    <div className="flex min-w-full justify-center items-end h-[220px] pb-6 px-4">
                         <Reorder.Group
                             axis="x"
                             values={me?.hand || []}
                             onReorder={onReorderHand}
-                            className="flex items-end -space-x-10 sm:-space-x-14"
+                            className="flex items-end -space-x-14 sm:-space-x-20"
                         >
                             {me?.hand.map((card) => {
                                 const inGame = showGroups && myAnalysis.games.some(g => g.some(c => c.id === card.id));
@@ -180,7 +180,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                                             onClick={() => onCardClick?.(card)}
                                             className={`transition-all duration-300 ${inGame ? 'ring-2 ring-yellow-400 rounded-lg -translate-y-10 shadow-glow-yellow' : ''} ${isSelected ? '-translate-y-20 ring-2 ring-blue-400 scale-110 z-50 shadow-2xl' : ''}`}
                                         >
-                                            <div className="scale-[0.75] sm:scale-110 origin-bottom">
+                                            <div className="scale-[0.8] sm:scale-110 origin-bottom">
                                                 <Card card={card} isSelected={isSelected} />
                                             </div>
                                         </div>
