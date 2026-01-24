@@ -24,7 +24,7 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
     const [difficulty, setDifficulty] = useState('normal');
 
     return (
-        <div className="h-screen w-screen bg-green-900 overflow-hidden flex font-sans select-none overflow-y-auto">
+        <div className="h-screen w-screen bg-green-900 overflow-hidden flex font-sans select-none">
             {!gameStarted ? (
                 <div className="m-auto flex flex-col items-center justify-center space-y-4 sm:space-y-8 glass-panel p-6 sm:p-16 rounded-[30px] sm:rounded-[40px] shadow-2xl border border-white/10 relative overflow-hidden backdrop-blur-2xl w-[95%] max-w-[600px] my-8">
                     {/* Back to Menu */}

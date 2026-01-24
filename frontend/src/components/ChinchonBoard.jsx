@@ -64,14 +64,15 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
     };
 
     return (
-        <div className="flex-1 min-h-full w-full flex flex-col items-center justify-between p-2 sm:p-6 relative felt-bg overflow-hidden text-white safe-areas">
-            {/* 1. Opponents Row (Responsive) */}
-            <div className={`w-full flex justify-around items-start pt-2 sm:pt-10 ${players.length > 3 ? 'gap-1' : 'gap-4'}`}>
+        <div className="h-full w-full flex flex-col items-center relative felt-bg overflow-hidden text-white safe-areas select-none">
+
+            {/* 1. Opponents Row - Fixed Height to prevent pushing board */}
+            <div className={`w-full flex-shrink-0 flex justify-around items-start pt-2 sm:pt-10 min-h-[100px] sm:min-h-[140px] ${players.length > 3 ? 'gap-1' : 'gap-4'}`}>
                 {players.slice(1).map((p, i) => renderOpponent(p, i))}
             </div>
 
-            {/* 2. Central Area: Deck & Discard (Dynamic sizing) */}
-            <div className="flex-1 flex gap-4 sm:gap-10 items-center justify-center my-2 sm:my-4">
+            {/* 2. Central Area: Deck & Discard - Flex Grow to take remaining space */}
+            <div className="flex-1 w-full flex gap-4 sm:gap-10 items-center justify-center">
                 {/* Mazo */}
                 <motion.div
                     whileHover={isMyTurn && turnAction === 'draw' ? { scale: 1.05 } : {}}
@@ -86,7 +87,6 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     <div className="absolute -bottom-2 -right-2 bg-yellow-500 text-green-950 font-black text-[10px] w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shadow-lg ring-2 ring-green-900">
                         {deckSize}
                     </div>
-                    <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-black uppercase text-white/20 tracking-widest whitespace-nowrap">Mazo</span>
                 </motion.div>
 
                 {/* Descarte */}
@@ -105,12 +105,16 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                             </div>
                         )}
                     </div>
-                    <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-black uppercase text-white/20 tracking-widest whitespace-nowrap">Descarte {discardPile.length > 1 && `(${discardPile.length})`}</span>
+                    {discardPile.length > 0 && (
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase text-white/40 tracking-widest whitespace-nowrap">
+                            Descarte ({discardPile.length})
+                        </div>
+                    )}
                 </motion.div>
             </div>
 
-            {/* 3. Player Area (Fixed to bottom) */}
-            <div className="w-full flex flex-col items-center gap-1 sm:gap-4 pb-2 sm:pb-8">
+            {/* 3. Player Area - Pinned to bottom, Fixed height */}
+            <div className="w-full flex-shrink-0 flex flex-col items-center gap-1 pb-4 sm:pb-8">
 
                 {/* Action Buttons Row */}
                 <div className="h-10 flex items-center gap-2">
@@ -157,20 +161,22 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                                     layout
                                     transition={{
                                         type: "spring",
-                                        stiffness: 300,
-                                        damping: 30,
-                                        mass: 0.8
+                                        stiffness: 250, // Un poco más suave para evitar rigidez
+                                        damping: 25,    // Controla el rebote para que sea elegante
+                                        mass: 0.5       // Más liviano para que responda instantáneamente
                                     }}
                                     whileDrag={{
-                                        scale: 1.08,
-                                        rotate: 3,
-                                        zIndex: 50,
-                                        boxShadow: "0 20px 40px rgba(0,0,0,0.4)"
+                                        scale: 1.15,    // Un poco más grande para resaltar el agarre
+                                        rotate: 2,
+                                        zIndex: 100,
+                                        filter: "brightness(1.1)", // Brillo sutil al agarrar
+                                        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)"
                                     }}
                                     className="relative flex-shrink-0 cursor-grab active:cursor-grabbing"
                                     style={{ touchAction: "none" }}
                                 >
-                                    <div
+                                    <motion.div
+                                        layout
                                         onClick={() => {
                                             if (isMyTurn && turnAction === 'discard') onDiscardCard(card);
                                             else onCardClick?.(card);
@@ -181,9 +187,12 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                                             card={card}
                                             isSelected={selectedCards?.some(c => c.id === card.id)}
                                         />
-                                    </div>
+                                    </motion.div>
                                     {inGame && (
-                                        <div className="absolute -top-1 left-1/2 -translate-x-1/2 bg-yellow-400 size-2 rounded-full shadow-glow-yellow animate-pulse" />
+                                        <motion.div
+                                            layout
+                                            className="absolute -top-1 left-1/2 -translate-x-1/2 bg-yellow-400 size-2 rounded-full shadow-glow-yellow animate-pulse"
+                                        />
                                     )}
                                 </Reorder.Item>
                             );
