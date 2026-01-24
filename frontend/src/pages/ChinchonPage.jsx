@@ -104,13 +104,6 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
 
                         {/* Game Modes */}
                         <div className="grid grid-cols-1 gap-3">
-                            <button
-                                onClick={() => { setMode('single'); setGameStarted(true); }}
-                                className="btn-primary py-4 sm:py-5 flex items-center justify-center gap-3 text-sm sm:text-base transition-all active:scale-[0.98]"
-                            >
-                                <UserIcon size={18} />
-                                JUGAR VS CPU
-                            </button>
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                                 <button
                                     onClick={() => { setMode('single'); setGameStarted(true); }}

@@ -34,16 +34,21 @@ const speak = (text) => {
 };
 
 export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount = 2, playMode = 'individual', roomId = '', playerName = 'Jugador 1') => {
-    const [deck, setDeck] = useState([]);
-    const [table, setTable] = useState([]);
-    const [players, setPlayers] = useState([]);
-    const [currentPlayerIdx, setCurrentPlayerIdx] = useState(0);
+    const [gameState, setGameState] = useState({
+        deck: [],
+        table: [],
+        players: [],
+        currentPlayerIdx: 0,
+        gameLog: [],
+        lastCapturerIdx: null,
+        round: 1,
+        dealerIdx: 0,
+        gamePhase: 'setup', // setup -> playing -> roundEnd -> gameEnd
+        waitingForOpponent: gameMode === 'multi'
+    });
+
     const [selectedHandCard, setSelectedHandCard] = useState(null);
     const [selectedTableCards, setSelectedTableCards] = useState([]);
-    const [gameLog, setGameLog] = useState([]);
-    const [lastCapturerIdx, setLastCapturerIdx] = useState(null);
-    const [round, setRound] = useState(1);
-    const [dealerIdx, setDealerIdx] = useState(0);
     const [timeLeft, setTimeLeft] = useState(30);
     const [stats, setStats] = useState(() => {
         const saved = localStorage.getItem('escoba_stats');
@@ -51,17 +56,20 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     });
 
     const channelRef = useRef(null);
-    const [playerRole, setPlayerRole] = useState(null); // 'host', 'guest'
+    const [playerRole, setPlayerRole] = useState(null);
     const [myPlayerIdx, setMyPlayerIdx] = useState(0);
     const myPlayerIdxRef = useRef(0);
-    const [waitingForOpponent, setWaitingForOpponent] = useState(gameMode === 'multi');
     const gameInitializedRef = useRef(false);
-    const playersRef = useRef([]);
-    const tableRef = useRef([]);
+
+    // Ref para acceso síncrono en callbacks de Supabase
+    const gameStateRef = useRef(gameState);
+    useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+
+    const { deck, table, players, currentPlayerIdx, gameLog, lastCapturerIdx, round, dealerIdx, gamePhase, waitingForOpponent } = gameState;
 
     // Timer Logic
     useEffect(() => {
-        if (waitingForOpponent) return;
+        if (waitingForOpponent || gamePhase !== 'playing') return;
         const timer = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
@@ -77,7 +85,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
             });
         }, 1000);
         return () => clearInterval(timer);
-    }, [currentPlayerIdx, waitingForOpponent, gameMode, myPlayerIdx, players]);
+    }, [currentPlayerIdx, waitingForOpponent, gameMode, myPlayerIdx, players, gamePhase]);
 
     useEffect(() => {
         setTimeLeft(30);
@@ -86,13 +94,10 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     const createPlayersArr = useCallback(() => {
         const p = [];
         for (let i = 0; i < playerCount; i++) {
-            let name = `Jugador ${i + 1}`;
-            if (i === 0) name = playerName;
-            else if (gameMode === 'single') name = `Jugador ${i + 1} (CPU)`;
-
+            let name = (i === 0) ? playerName : (gameMode === 'single' ? `CPU ${i}` : `Jugador ${i + 1}`);
             p.push({
                 id: `p${i + 1}`,
-                name: name,
+                name,
                 hand: [],
                 capturedCards: [],
                 escobas: 0,
@@ -103,8 +108,64 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         return p;
     }, [playerCount, gameMode, playerName]);
 
-    // Players are now initialized during startRound to avoid race conditions
-    // Removed old initialization effect to prevent state overwriting empty hands
+    const startRound = useCallback(() => {
+        if (gameMode === 'multi') return;
+
+        setGameState(prev => {
+            const activePlayers = prev.players.length > 0 ? prev.players : createPlayersArr();
+            let newDeck = shuffleDeck(createDeck());
+            const tableCards = newDeck.splice(0, 4);
+
+            const nextPlayers = activePlayers.map(p => ({
+                ...p,
+                hand: newDeck.splice(0, 3),
+                capturedCards: [],
+                escobas: 0
+            }));
+
+            const { escobas, remaining } = findInitialEscobas(tableCards);
+            let currentTable = remaining;
+            let initialMsgs = [`Ronda ${prev.round} iniciada.`];
+            let nextLastCapturerIdx = prev.lastCapturerIdx;
+
+            if (escobas.length > 0) {
+                const dealer = nextPlayers[prev.dealerIdx];
+                if (dealer) {
+                    dealer.capturedCards = [...escobas.flat()];
+                    dealer.escobas += escobas.length;
+                    nextLastCapturerIdx = prev.dealerIdx;
+                    initialMsgs.push(`¡Escoba de Mano! ${dealer.name} hizo ${escobas.length}.`);
+                    playSound('escoba');
+                    speak(escobas.length > 1 ? "Escobas de mano" : "Escoba de mano");
+                }
+            }
+
+            return {
+                ...prev,
+                deck: newDeck,
+                table: currentTable,
+                players: nextPlayers,
+                currentPlayerIdx: (prev.dealerIdx + 1) % playerCount,
+                gameLog: [...initialMsgs, ...prev.gameLog],
+                lastCapturerIdx: nextLastCapturerIdx,
+                gamePhase: 'playing'
+            };
+        });
+    }, [playerCount, gameMode, createPlayersArr]);
+
+    useEffect(() => {
+        if (gamePhase === 'setup' && gameMode !== 'multi') {
+            startRound();
+        }
+    }, [gamePhase, gameMode, startRound]);
+
+    // Safety Trigger: if playing but no players, force initialize
+    useEffect(() => {
+        if (gamePhase === 'playing' && players.length === 0 && gameMode !== 'multi') {
+            console.warn("Escoba Safety Trigger: Initializing missing players...");
+            startRound();
+        }
+    }, [gamePhase, players.length, gameMode, startRound]);
 
     // Supabase Multiplayer Setup
     useEffect(() => {
@@ -117,18 +178,13 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                 .on('presence', { event: 'sync' }, () => {
                     const state = channel.presenceState();
                     const presenceEntries = Object.entries(state);
-                    console.log('Presence entries:', presenceEntries);
-
                     if (presenceEntries.length === 0) return;
 
-                    // Get all players with their joined_at timestamp and names
                     const roomPlayers = presenceEntries.map(([key, presences]) => ({
                         id: key,
                         name: presences[0].name || key.split('_')[0],
                         joinedAt: presences[0].joined_at
                     })).sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
-
-                    console.log('Sorted room players:', roomPlayers);
 
                     const myEntry = roomPlayers.find(p => p.id.startsWith(playerName + '_'));
                     const isHost = roomPlayers[0]?.id === myEntry?.id;
@@ -137,428 +193,233 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                     setPlayerRole(isHost ? 'host' : 'guest');
                     setMyPlayerIdx(myIdx);
                     myPlayerIdxRef.current = myIdx;
-                    console.log('My player index set to:', myIdx, 'Role:', isHost ? 'host' : 'guest');
 
-                    // When we have enough players, the host starts the game
                     if (roomPlayers.length >= playerCount) {
-                        setWaitingForOpponent(false);
-
-                        // Only host initializes the game, and only once
+                        setGameState(prev => ({ ...prev, waitingForOpponent: false }));
                         if (isHost && !gameInitializedRef.current) {
                             gameInitializedRef.current = true;
                             const playerNames = roomPlayers.map(p => p.name);
-                            console.log('Host starting game with player names:', playerNames);
                             setTimeout(() => startRoundMulti(playerNames, channel), 500);
                         }
                     } else {
-                        setWaitingForOpponent(true);
+                        setGameState(prev => ({ ...prev, waitingForOpponent: true }));
                     }
                 })
                 .on('broadcast', { event: 'init_game' }, ({ payload }) => {
-                    console.log('Received init_game:', payload);
-                    setDeck(payload.deck);
-                    setTable(payload.table);
-                    tableRef.current = payload.table; // Update ref immediately
-                    setPlayers(payload.players);
-                    playersRef.current = payload.players; // Update ref immediately
-                    setCurrentPlayerIdx(payload.currentPlayerIdx);
-                    setDealerIdx(payload.dealerIdx);
-                    setGameLog(prev => ["Partida sincronizada.", ...prev]);
-                    setWaitingForOpponent(false);
+                    setGameState(prev => ({ ...prev, ...payload, waitingForOpponent: false, gamePhase: 'playing' }));
                 })
                 .on('broadcast', { event: 'play_move' }, ({ payload }) => {
-                    console.log('Received play_move from remote:', payload);
-                    processMove(payload.playerIdx, payload.move.cardPlayed, payload.move.cardsCaptured, payload.move.isDiscard, true);
+                    if (payload.playerIdx !== myPlayerIdxRef.current) {
+                        processMove(payload.playerIdx, payload.move.cardPlayed, payload.move.cardsCaptured, payload.move.isDiscard, true);
+                    }
                 })
                 .on('broadcast', { event: 'deal_next_hands' }, ({ payload }) => {
-                    console.log('Received next hands from host:', payload);
-                    setDeck(payload.deck);
-                    setPlayers(payload.players);
-                    playersRef.current = payload.players;
-                    setCurrentPlayerIdx(payload.currentPlayerIdx);
-                    setGameLog(prev => ["Nuevas cartas repartidas.", ...prev]);
+                    setGameState(prev => ({ ...prev, ...payload }));
                 })
                 .on('broadcast', { event: 'soplo_made' }, ({ payload }) => {
                     processSoplo(payload.playerIdx, payload.cardsCaptured, true);
                 })
                 .subscribe(async (status) => {
-                    console.log('Channel status:', status);
                     if (status === 'SUBSCRIBED') {
-                        const uniqueId = `${playerName}_${Math.random().toString(36).substr(2, 4)}`;
-                        await channel.track({
-                            name: playerName,
-                            joined_at: new Date().toISOString()
-                        });
+                        await channel.track({ name: playerName, joined_at: new Date().toISOString() });
                     }
                 });
 
             channelRef.current = channel;
-
-            return () => {
-                channel.unsubscribe();
-            };
+            return () => { channel.unsubscribe(); };
         }
-    }, [gameMode, roomId, playerName]);
+    }, [gameMode, roomId, playerName, playerCount]);
 
     const startRoundMulti = (playerNames, channel) => {
-        console.log('startRoundMulti called with:', playerNames);
-
-        // Create players with real names from Supabase presence
         const realPlayers = playerNames.map((name, i) => ({
-            id: `p${i + 1}`,
-            name: name,
-            hand: [],
-            capturedCards: [],
-            escobas: 0,
-            score: 0,
-            isBot: false
+            id: `p${i + 1}`, name, hand: [], capturedCards: [], escobas: 0, score: 0, isBot: false
         }));
 
         let newDeck = shuffleDeck(createDeck());
         const initialTableCards = newDeck.splice(0, 4);
-
-        // Give each player 3 cards
-        realPlayers.forEach(p => {
-            p.hand = newDeck.splice(0, 3);
-        });
+        realPlayers.forEach(p => { p.hand = newDeck.splice(0, 3); });
 
         const { escobas, remaining } = findInitialEscobas(initialTableCards);
-        let currentTable = remaining;
-        let pIdx = 0; // First player starts
-        let initialMsgs = [`Ronda ${round} iniciada.`];
+        let initialMsgs = [`Ronda ${gameStateRef.current.round} iniciada.`];
+        let lastCap = null;
 
         if (escobas.length > 0) {
             realPlayers[0].capturedCards = [...escobas.flat()];
             realPlayers[0].escobas += escobas.length;
-            setLastCapturerIdx(0);
+            lastCap = 0;
             initialMsgs.push(`¡Escoba de Mano! ${realPlayers[0].name} hizo ${escobas.length}.`);
         }
 
-        // Broadcast to all players
-        console.log('Broadcasting init_game with players:', realPlayers);
-        channel.send({
-            type: 'broadcast',
-            event: 'init_game',
-            payload: {
-                deck: newDeck,
-                table: currentTable,
-                players: realPlayers,
-                currentPlayerIdx: pIdx,
-                dealerIdx: 0
-            }
-        });
+        const payload = {
+            deck: newDeck,
+            table: remaining,
+            players: realPlayers,
+            currentPlayerIdx: 0,
+            dealerIdx: 0,
+            lastCapturerIdx: lastCap
+        };
 
-        // Also set locally for host
-        setDeck(newDeck);
-        setTable(currentTable);
-        tableRef.current = currentTable; // Update ref immediately
-        setPlayers(realPlayers);
-        playersRef.current = realPlayers; // Update ref immediately
-        setCurrentPlayerIdx(pIdx);
-        setDealerIdx(0);
-        setGameLog(prev => [...initialMsgs, ...prev]);
+        channel.send({ type: 'broadcast', event: 'init_game', payload });
+        setGameState(prev => ({ ...prev, ...payload, gamePhase: 'playing' }));
     };
 
-    const startRound = useCallback(() => {
-        if (gameMode === 'multi') return;
-
-        // Atomic update for all game states to prevent race conditions
-        let newDeck = shuffleDeck(createDeck());
-        const initialTableCards = newDeck.splice(0, 4);
-
-        setPlayers(currentPlayers => {
-            // Asegurar que tenemos jugadores antes de empezar
-            const activePlayers = currentPlayers.length > 0 ? currentPlayers : createPlayersArr();
-
-            const nextPlayers = activePlayers.map(p => ({
-                ...p,
-                hand: newDeck.splice(0, 3),
-                capturedCards: [],
-                escobas: 0
-            }));
-
-            const { escobas, remaining } = findInitialEscobas(initialTableCards);
-            let currentTable = remaining;
-            let initialMsgs = [`Ronda ${round} iniciada.`];
-
-            if (escobas.length > 0) {
-                const dealer = nextPlayers[dealerIdx];
-                if (dealer) {
-                    dealer.capturedCards = [...escobas.flat()];
-                    dealer.escobas += (dealer.escobas || 0) + escobas.length;
-                    setLastCapturerIdx(dealerIdx);
-                    initialMsgs.push(`¡Escoba de Mano! ${dealer.name} hizo ${escobas.length}.`);
-                    playSound('escoba');
-                    speak(escobas.length > 1 ? "Escobas de mano" : "Escoba de mano");
-                }
-            }
-
-            // Sync other states OUTSIDE setPlayers updater but based on local variables
-            setTable(currentTable);
-            setDeck(newDeck);
-            setCurrentPlayerIdx((dealerIdx + 1) % playerCount);
-            setGameLog(prev => [...initialMsgs, ...prev]);
-
-            return nextPlayers;
-        });
-    }, [round, dealerIdx, playerCount, gameMode, createPlayersArr]);
-
-    useEffect(() => {
-        if (gameMode !== 'multi') startRound();
-    }, [round]);
-
-    useEffect(() => {
-        if (gameMode === 'multi') return; // Strictly no AI moves in multi mode
-        const currentPlayer = players[currentPlayerIdx];
-        if (currentPlayer?.isBot && !waitingForOpponent) {
-            const timer = setTimeout(() => {
-                const move = findBestMove(currentPlayer.hand, table, difficulty);
-                if (move.type === 'capture') processMove(currentPlayerIdx, move.card, move.captured);
-                else processMove(currentPlayerIdx, move.card, [], true);
-            }, 1000);
-            return () => clearTimeout(timer);
-        }
-    }, [currentPlayerIdx, players, table, waitingForOpponent, difficulty]);
-
     const processMove = (playerIdx, cardPlayed, cardsCaptured, isDiscard = false, isRemote = false) => {
-        // Use ref for myPlayerIdx to avoid stale closure
-        const currentMyPlayerIdx = myPlayerIdxRef.current;
-        console.log('processMove called:', { playerIdx, currentMyPlayerIdx, isRemote, gameMode, hasChannel: !!channelRef.current });
+        if (gameMode === 'multi' && playerIdx === myPlayerIdxRef.current && !isRemote) {
+            channelRef.current?.send({
+                type: 'broadcast',
+                event: 'play_move',
+                payload: { playerIdx, move: { cardPlayed, cardsCaptured, isDiscard } }
+            });
+        }
 
-        if (gameMode === 'multi' && playerIdx === currentMyPlayerIdx && !isRemote) {
-            console.log('Broadcasting play_move...');
-            if (channelRef.current) {
-                channelRef.current.send({
-                    type: 'broadcast',
-                    event: 'play_move',
-                    payload: {
-                        playerIdx: currentMyPlayerIdx,
-                        move: { cardPlayed, cardsCaptured, isDiscard }
-                    }
-                });
-                console.log('play_move broadcasted successfully');
+        setGameState(prev => {
+            const player = prev.players[playerIdx];
+            if (!player) return prev;
+
+            const newHand = player.hand.filter(c => c.id !== cardPlayed.id);
+            let newTable = [...prev.table];
+            let newCaptured = [...player.capturedCards];
+            let escobaMade = false;
+            let logMsg = '';
+            let nextLastCap = prev.lastCapturerIdx;
+
+            if (isDiscard) {
+                newTable.push(cardPlayed);
+                logMsg = `${player.name} tiró ${cardPlayed.value} de ${cardPlayed.suit}.`;
+                playSound('play');
             } else {
-                console.error('Channel not available for broadcast!');
-            }
-        }
-
-        // Use refs for remote moves to get the latest data
-        const currentPlayers = isRemote && playersRef.current.length > 0 ? playersRef.current : players;
-        const currentTable = isRemote && tableRef.current.length > 0 ? tableRef.current : table;
-
-        const player = currentPlayers[playerIdx];
-        if (!player) {
-            console.error('Player not found:', playerIdx, currentPlayers);
-            return;
-        }
-
-        const newHand = player.hand.filter(c => c.id !== cardPlayed.id);
-        let newTable = [...currentTable];
-        let newCaptured = [...player.capturedCards];
-        let escobaMade = false;
-        let logMsg = '';
-
-        let nextLastCapturerIdx = lastCapturerIdx;
-        if (isDiscard) {
-            newTable.push(cardPlayed);
-            logMsg = `${player.name} tiró ${cardPlayed.value} de ${cardPlayed.suit}.`;
-            playSound('play');
-        } else {
-            newTable = newTable.filter(c => !cardsCaptured.some(cap => cap.id === c.id));
-            newCaptured = [...newCaptured, cardPlayed, ...cardsCaptured];
-            if (newTable.length === 0) {
-                escobaMade = true;
-                logMsg = `¡${player.name} hizo Escoba!`;
-                playSound('escoba');
-                speak("Escoba");
-            } else {
-                logMsg = `${player.name} levantó cartas.`;
-                playSound('capture');
-                const velos = [...cardsCaptured, cardPlayed].filter(c => c.suit === 'oros' && [1, 7, 12].includes(c.value));
-                if (velos.length > 0) speak("Velo levantado");
-            }
-            nextLastCapturerIdx = playerIdx;
-            setLastCapturerIdx(playerIdx);
-        }
-
-        // Use currentPlayers (from ref for remote) to create new array
-        const newPlayers = currentPlayers.map((p, i) => {
-            if (i === playerIdx) {
-                return {
-                    ...player,
-                    hand: newHand,
-                    capturedCards: newCaptured,
-                    escobas: player.escobas + (escobaMade ? 1 : 0)
-                };
-            }
-            return { ...p }; // Keep other players intact
-        });
-
-        setPlayers(newPlayers);
-        playersRef.current = newPlayers; // Update ref too
-        setTable(newTable);
-        tableRef.current = newTable; // Update ref too
-        setGameLog(prev => [logMsg, ...prev]);
-        setSelectedHandCard(null);
-        setSelectedTableCards([]);
-
-        const allEmpty = newPlayers.every(p => p.hand.length === 0);
-        if (allEmpty) {
-            if (deck.length > 0) {
-                // En MULTI, solo el host decide qué cartas se reparten ahora
-                if (gameMode === 'multi') {
-                    if (playerRole === 'host') {
-                        const nextDeck = [...deck];
-                        const nextPlayersArr = newPlayers.map(p => ({ ...p, hand: nextDeck.splice(0, 3) }));
-                        const nextPlayerIdx = (dealerIdx + 1) % playerCount;
-
-                        // Notificar al otro jugador
-                        channelRef.current.send({
-                            type: 'broadcast',
-                            event: 'deal_next_hands',
-                            payload: {
-                                deck: nextDeck,
-                                players: nextPlayersArr,
-                                currentPlayerIdx: nextPlayerIdx
-                            }
-                        });
-
-                        // Aplicar localmente para el host
-                        setDeck(nextDeck);
-                        setPlayers(nextPlayersArr);
-                        playersRef.current = nextPlayersArr;
-                        setCurrentPlayerIdx(nextPlayerIdx);
-                        setGameLog(prev => ["Nuevas cartas repartidas.", ...prev]);
-                    }
+                newTable = newTable.filter(c => !cardsCaptured.some(cap => cap.id === c.id));
+                newCaptured = [...newCaptured, cardPlayed, ...cardsCaptured];
+                if (newTable.length === 0) {
+                    escobaMade = true;
+                    logMsg = `¡${player.name} hizo Escoba!`;
+                    playSound('escoba');
+                    speak("Escoba");
                 } else {
-                    // Modo Local/IA - sigue igual
-                    const nextDeck = [...deck];
-                    const nextPlayersArr = newPlayers.map(p => ({ ...p, hand: nextDeck.splice(0, 3) }));
-                    setDeck(nextDeck);
-                    setPlayers(nextPlayersArr);
-                    setGameLog(prev => ["Nuevas cartas repartidas.", ...prev]);
-                    setCurrentPlayerIdx((dealerIdx + 1) % playerCount);
+                    logMsg = `${player.name} levantó cartas.`;
+                    playSound('capture');
                 }
-            } else {
-                endRound(newPlayers, newTable, nextLastCapturerIdx);
+                nextLastCap = playerIdx;
             }
-        } else {
-            setCurrentPlayerIdx((playerIdx + 1) % playerCount);
+
+            const newPlayers = prev.players.map((p, i) => i === playerIdx ? {
+                ...p, hand: newHand, capturedCards: newCaptured, escobas: p.escobas + (escobaMade ? 1 : 0)
+            } : p);
+
+            const allEmpty = newPlayers.every(p => p.hand.length === 0);
+            if (allEmpty) {
+                if (prev.deck.length > 0) {
+                    // Deal next 3 cards
+                    const nextDeck = [...prev.deck];
+                    const playersWithNewHands = newPlayers.map(p => ({ ...p, hand: nextDeck.splice(0, 3) }));
+
+                    if (gameMode === 'multi' && playerRole === 'host') {
+                        channelRef.current.send({
+                            type: 'broadcast', event: 'deal_next_hands',
+                            payload: { deck: nextDeck, players: playersWithNewHands, currentPlayerIdx: (prev.dealerIdx + 1) % playerCount }
+                        });
+                    }
+
+                    return {
+                        ...prev,
+                        deck: nextDeck,
+                        table: newTable,
+                        players: playersWithNewHands,
+                        currentPlayerIdx: (prev.dealerIdx + 1) % playerCount,
+                        gameLog: [logMsg, ...prev.gameLog],
+                        lastCapturerIdx: nextLastCap
+                    };
+                } else {
+                    // End round
+                    return finalizeRound(prev, newPlayers, newTable, nextLastCap);
+                }
+            }
+
+            return {
+                ...prev,
+                table: newTable,
+                players: newPlayers,
+                currentPlayerIdx: (playerIdx + 1) % playerCount,
+                gameLog: [logMsg, ...prev.gameLog],
+                lastCapturerIdx: nextLastCap
+            };
+        });
+    };
+
+    const finalizeRound = (state, players, table, lastCap) => {
+        let finalPlayers = [...players];
+        if (lastCap !== null && table.length > 0) {
+            finalPlayers[lastCap] = { ...finalPlayers[lastCap], capturedCards: [...finalPlayers[lastCap].capturedCards, ...table] };
         }
+
+        const results = calculateMatchPoints(finalPlayers, playMode);
+        finalPlayers = finalPlayers.map((p, i) => ({ ...p, score: p.score + results[i].score }));
+
+        const hasWinner = finalPlayers.some(p => p.score >= 15);
+        if (hasWinner) {
+            return { ...state, players: finalPlayers, table: [], gamePhase: 'gameEnd', gameLog: ["Partida finalizada.", ...state.gameLog] };
+        }
+
+        setTimeout(() => {
+            setGameState(prev => ({
+                ...prev, round: prev.round + 1, dealerIdx: (prev.dealerIdx + 1) % playerCount, gamePhase: 'setup'
+            }));
+        }, 3000);
+
+        return { ...state, players: finalPlayers, table: [], gamePhase: 'roundEnd' };
     };
 
     const processSoplo = (playerIdx, cardsCaptured, isRemote = false) => {
         if (gameMode === 'multi' && !isRemote) {
-            channelRef.current.send({
-                type: 'broadcast',
-                event: 'soplo_made',
-                payload: { playerIdx, cardsCaptured }
-            });
+            channelRef.current?.send({ type: 'broadcast', event: 'soplo_made', payload: { playerIdx, cardsCaptured } });
         }
-
-        setPlayers(prev => {
-            const next = [...prev];
-            const p = next[playerIdx];
-            if (!p) return prev;
-
-            p.capturedCards = [...p.capturedCards, ...cardsCaptured];
-            p.escobas = (p.escobas || 0) + 1;
-            return next;
-        });
-
-        setTable(prev => prev.filter(c => !cardsCaptured.some(cap => cap.id === c.id)));
-        setGameLog(prev => [`¡SOPLO! ${players[playerIdx]?.name || 'Alguien'} sopló cartas de la mesa.`, ...prev]);
-        setSelectedTableCards([]);
+        setGameState(prev => ({
+            ...prev,
+            players: prev.players.map((p, i) => i === playerIdx ? { ...p, capturedCards: [...p.capturedCards, ...cardsCaptured], escobas: p.escobas + 1 } : p),
+            table: prev.table.filter(c => !cardsCaptured.some(cap => cap.id === c.id)),
+            gameLog: [`¡SOPLO! ${prev.players[playerIdx]?.name} sopló cartas.`, ...prev.gameLog]
+        }));
         playSound('escoba');
-        speak("Soplo");
     };
 
-    const endRound = (currentPlayers, remainingTable, lastCapturer) => {
-        let finalPlayers = [...currentPlayers];
-        if (lastCapturer !== null && remainingTable.length > 0) {
-            finalPlayers[lastCapturer].capturedCards.push(...remainingTable);
-            setGameLog(prev => [`${finalPlayers[lastCapturer].name} se lleva las sobras.`, ...prev]);
+    // AI logic
+    useEffect(() => {
+        if (gameMode !== 'single' || gamePhase !== 'playing' || waitingForOpponent) return;
+        const player = players[currentPlayerIdx];
+        if (player?.isBot) {
+            const timer = setTimeout(() => {
+                const move = findBestMove(player.hand, table, difficulty);
+                processMove(currentPlayerIdx, move.card, move.captured, move.type === 'discard');
+            }, 1000);
+            return () => clearTimeout(timer);
         }
-        setTable([]);
-
-        const results = calculateMatchPoints(finalPlayers, playMode);
-
-        let summaryMsgs = [];
-        if (playMode === 'teams' && finalPlayers.length === 4) {
-            finalPlayers[0].score += results[0].score;
-            finalPlayers[2].score += results[0].score;
-            finalPlayers[1].score += results[1].score;
-            finalPlayers[3].score += results[1].score;
-            summaryMsgs.push(`Eq. A: +${results[0].score} pts`, `Eq. B: +${results[1].score} pts`);
-        } else {
-            results.forEach((res, i) => {
-                if (finalPlayers[i]) {
-                    finalPlayers[i].score += res.score;
-                    summaryMsgs.push(`${finalPlayers[i].name}: +${res.score} pts`);
-                }
-            });
-        }
-
-        setPlayers(finalPlayers);
-        setGameLog(prev => [...summaryMsgs, ...prev]);
-
-        const hasWinner = finalPlayers.some(p => p.score >= 15);
-        if (hasWinner) {
-            const winner = [...finalPlayers].sort((a, b) => b.score - a.score)[0];
-            setGameLog(prev => [`¡PARTIDA FINALIZADA! Ganador: ${winner.name}`, ...prev]);
-            speak(`Partida finalizada. Ganador ${winner.name}`);
-        } else {
-            setTimeout(() => {
-                setDealerIdx(prev => (prev + 1) % playerCount);
-                setRound(prev => prev + 1);
-            }, 3000);
-        }
-    };
-
-    const onHandCardClick = (card) => {
-        if (gameMode === 'multi' && currentPlayerIdx !== myPlayerIdx) return;
-        if (players[currentPlayerIdx]?.isBot) return;
-        setSelectedHandCard(card.id === selectedHandCard?.id ? null : card);
-    };
-
-    const onTableCardClick = (card) => {
-        const exists = selectedTableCards.find(c => c.id === card.id);
-        if (exists) setSelectedTableCards(prev => prev.filter(c => c.id !== card.id));
-        else setSelectedTableCards(prev => [...prev, card]);
-    };
-
-    const onPlayMove = () => {
-        if (!selectedHandCard) return;
-        if (checkSum15(selectedHandCard, selectedTableCards)) processMove(currentPlayerIdx, selectedHandCard, selectedTableCards, false);
-        else if (selectedTableCards.length === 0) processMove(currentPlayerIdx, selectedHandCard, [], true);
-        else alert("La suma no es 15. Para descartar, no selecciones cartas de la mesa.");
-    };
-
-    const onSoplo = () => {
-        if (checkTableSum15(selectedTableCards)) {
-            const sopladorIdx = gameMode === 'multi' ? myPlayerIdx : currentPlayerIdx;
-            processSoplo(sopladorIdx, selectedTableCards);
-        }
-    };
+    }, [currentPlayerIdx, gamePhase, waitingForOpponent]);
 
     return {
-        players,
-        table,
-        currentPlayerIdx,
+        ...gameState,
         selectedHandCard,
+        setSelectedHandCard,
         selectedTableCards,
-        gameLog,
-        onHandCardClick,
-        onTableCardClick,
-        onPlayMove,
-        onSoplo,
-        deckSize: deck.length,
+        setSelectedTableCards,
         timeLeft,
         stats,
-        dealerIdx,
-        gameMode,
-        waitingForOpponent,
-        myPlayerIdx,
-        roomId
+        onHandCardClick: (card) => {
+            if (gamePhase !== 'playing' || (gameMode === 'multi' && currentPlayerIdx !== myPlayerIdx)) return;
+            setSelectedHandCard(prev => prev?.id === card.id ? null : card);
+        },
+        onTableCardClick: (card) => {
+            if (gamePhase !== 'playing') return;
+            setSelectedTableCards(prev => prev.some(c => c.id === card.id) ? prev.filter(c => c.id !== card.id) : [...prev, card]);
+        },
+        onPlayMove: () => {
+            if (!selectedHandCard) return;
+            if (checkSum15(selectedHandCard, selectedTableCards)) processMove(currentPlayerIdx, selectedHandCard, selectedTableCards, false);
+            else if (selectedTableCards.length === 0) processMove(currentPlayerIdx, selectedHandCard, [], true);
+        },
+        onSoplo: () => {
+            if (checkTableSum15(selectedTableCards)) processSoplo(gameMode === 'multi' ? myPlayerIdx : currentPlayerIdx, selectedTableCards);
+        },
+        deckSize: deck.length,
+        myPlayerIdx
     };
 };

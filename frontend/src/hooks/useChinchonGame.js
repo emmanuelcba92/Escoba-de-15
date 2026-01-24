@@ -220,13 +220,21 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
     }, [gameMode, createPlayers]);
 
     useEffect(() => {
-        if (gamePhase === 'setup' && gameMode !== 'multi') {
-            // Al montar, iniciamos directamente para evitar pasos intermedios
+        if ((gamePhase === 'setup' || (gamePhase === 'playing' && players.length === 0)) && gameMode !== 'multi') {
+            // Al montar o si detectamos estado vacío, iniciamos
             startRound();
         }
-    }, [gamePhase, gameMode, startRound]);
+    }, [gamePhase, gameMode, startRound, players.length]);
 
     const startTurn = () => setGameState(prev => ({ ...prev, gamePhase: 'playing' }));
+
+    // Safety trigger: if somehow in playing phase but players array is empty, force re-initialization
+    useEffect(() => {
+        if (gamePhase === 'playing' && players.length === 0 && gameMode !== 'multi') {
+            console.warn("Safety trigger: Repopulating players...");
+            startRound();
+        }
+    }, [gamePhase, players.length, gameMode, startRound]);
 
     const executeDraw = (fromDeck, isRemote = false) => {
         setGameState(prev => {
@@ -310,7 +318,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
                 guard++;
             }
 
-            const isNextBot = newPlayers[nextIdx].isBot;
+            const isNextBot = newPlayers[nextIdx]?.isBot;
             const nextPhase = (gameMode === 'local' && !isNextBot) ? 'turnTransition' : 'playing';
 
             return {
