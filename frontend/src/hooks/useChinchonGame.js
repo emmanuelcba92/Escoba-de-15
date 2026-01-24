@@ -172,11 +172,15 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
         }
     }, [gameMode, roomId, playerName, playerCount]);
 
+    // Función atómica para iniciar ronda con IDs blindados
     const startRound = useCallback(() => {
         if (gameMode === 'multi') return;
         setGameState(prev => {
-            const activePlayers = prev.players.filter(p => !p.isEliminated);
-            if (activePlayers.length === 1 && prev.players.length > 0) {
+            // SEGURO DE VIDA: Si no hay jugadores, los creamos ahora mismo
+            const basePlayers = prev.players.length > 0 ? prev.players : createPlayers();
+            const activePlayers = basePlayers.filter(p => !p.isEliminated);
+
+            if (activePlayers.length === 1 && basePlayers.length > 0) {
                 return { ...prev, gamePhase: 'gameEnd' };
             }
 
@@ -187,7 +191,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
                 id: `r${prev.round}-${c.id}`
             }));
 
-            const updatedPlayers = prev.players.map(p => {
+            const updatedPlayers = basePlayers.map(p => {
                 if (p.isEliminated) return p;
                 return {
                     ...p,
@@ -213,13 +217,14 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
             };
         });
         processingAction.current = false;
-    }, [gameMode]);
+    }, [gameMode, createPlayers]);
 
     useEffect(() => {
         if (gamePhase === 'setup' && gameMode !== 'multi') {
-            setGameState(prev => ({ ...prev, players: createPlayers(), gamePhase: 'readyToStart' }));
+            // Al montar, iniciamos directamente para evitar pasos intermedios
+            startRound();
         }
-    }, [gamePhase, createPlayers, gameMode]);
+    }, [gamePhase, gameMode, startRound]);
 
     const startTurn = () => setGameState(prev => ({ ...prev, gamePhase: 'playing' }));
 

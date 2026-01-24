@@ -198,12 +198,8 @@ const GameRoom = ({ mode, playerCount, difficulty, playerName, roomId, onExit })
     const { width, height } = useWindowSize();
     const [showConfetti, setShowConfetti] = useState(false);
 
-    // Iniciar juego al montar
-    useEffect(() => {
-        if (game.gamePhase === 'readyToStart') {
-            game.startRound();
-        }
-    }, [game.gamePhase]);
+    // El inicio de la partida ahora lo maneja directamente useChinchonGame al detectar la fase 'setup'
+    // para garantizar que sea una operación atómica y evitar problemas de renderizado.
 
     return (
         <>

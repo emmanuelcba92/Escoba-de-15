@@ -103,11 +103,8 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         return p;
     }, [playerCount, gameMode, playerName]);
 
-    useEffect(() => {
-        if (gameMode !== 'multi') {
-            setPlayers(createPlayersArr());
-        }
-    }, [playerCount, gameMode, playerName, createPlayersArr]);
+    // Players are now initialized during startRound to avoid race conditions
+    // Removed old initialization effect to prevent state overwriting empty hands
 
     // Supabase Multiplayer Setup
     useEffect(() => {
@@ -265,12 +262,13 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     const startRound = useCallback(() => {
         if (gameMode === 'multi') return;
 
+        // Atomic update for all game states to prevent race conditions
+        let newDeck = shuffleDeck(createDeck());
+        const initialTableCards = newDeck.splice(0, 4);
+
         setPlayers(currentPlayers => {
             // Asegurar que tenemos jugadores antes de empezar
             const activePlayers = currentPlayers.length > 0 ? currentPlayers : createPlayersArr();
-
-            let newDeck = shuffleDeck(createDeck());
-            const initialTableCards = newDeck.splice(0, 4);
 
             const nextPlayers = activePlayers.map(p => ({
                 ...p,
@@ -287,7 +285,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                 const dealer = nextPlayers[dealerIdx];
                 if (dealer) {
                     dealer.capturedCards = [...escobas.flat()];
-                    dealer.escobas += escobas.length;
+                    dealer.escobas += (dealer.escobas || 0) + escobas.length;
                     setLastCapturerIdx(dealerIdx);
                     initialMsgs.push(`¡Escoba de Mano! ${dealer.name} hizo ${escobas.length}.`);
                     playSound('escoba');
@@ -295,10 +293,12 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                 }
             }
 
+            // Sync other states OUTSIDE setPlayers updater but based on local variables
             setTable(currentTable);
             setDeck(newDeck);
             setCurrentPlayerIdx((dealerIdx + 1) % playerCount);
             setGameLog(prev => [...initialMsgs, ...prev]);
+
             return nextPlayers;
         });
     }, [round, dealerIdx, playerCount, gameMode, createPlayersArr]);
