@@ -266,12 +266,13 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         if (gameMode === 'multi') return;
 
         setPlayers(currentPlayers => {
-            if (currentPlayers.length === 0) return currentPlayers;
+            // Asegurar que tenemos jugadores antes de empezar
+            const activePlayers = currentPlayers.length > 0 ? currentPlayers : createPlayersArr();
 
             let newDeck = shuffleDeck(createDeck());
             const initialTableCards = newDeck.splice(0, 4);
 
-            const nextPlayers = currentPlayers.map(p => ({
+            const nextPlayers = activePlayers.map(p => ({
                 ...p,
                 hand: newDeck.splice(0, 3),
                 capturedCards: [],
@@ -300,7 +301,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
             setGameLog(prev => [...initialMsgs, ...prev]);
             return nextPlayers;
         });
-    }, [round, dealerIdx, playerCount, gameMode]);
+    }, [round, dealerIdx, playerCount, gameMode, createPlayersArr]);
 
     useEffect(() => {
         if (gameMode !== 'multi') startRound();

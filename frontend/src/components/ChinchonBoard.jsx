@@ -17,12 +17,12 @@ const playSound = (type) => {
 };
 
 const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardClick, onReorderHand, onAutoSort }) => {
-    const { players, currentPlayerIdx, discardPile, deckSize, turnAction, gamePhase, selectedCards } = game;
+    const { players, currentPlayerIdx, discardPile, deckSize, turnAction, gamePhase, selectedCards, waitingForOpponent, myPlayerIdx, gameMode } = game;
     const [showGroups, setShowGroups] = useState(true);
     const [tableColor, setTableColor] = useState('green-900'); // green-900 or slate-900
 
-    const me = players[0];
-    const isMyTurn = currentPlayerIdx === 0 && gamePhase === 'playing';
+    const me = players[myPlayerIdx] || players[0];
+    const isMyTurn = currentPlayerIdx === myPlayerIdx && gamePhase === 'playing';
 
     // Análisis de mi mano para mostrar sugerencias sin mover el orden real
     const myAnalysis = useMemo(() => findBestCombination(me?.hand || []), [me?.hand]);
@@ -47,7 +47,9 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
 
     // Función para renderizar el grupo de oponentes
     const renderOpponent = (player, idx) => {
-        const isTurn = currentPlayerIdx === idx + 1;
+        // Encontrar el índice real del oponente
+        const actualIdx = players.indexOf(player);
+        const isTurn = currentPlayerIdx === actualIdx;
         const reveal = gamePhase === 'roundEnd' || gamePhase === 'showing' || (gamePhase === 'gameEnd');
 
         let analysis = { games: [], looseCards: player.hand };
@@ -94,13 +96,34 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
         );
     };
 
+    // Filtrar oponentes (todos menos yo)
+    const opponents = players.filter((_, i) => i !== myPlayerIdx);
+
     return (
         <div className={`h-full w-full flex flex-col items-center relative felt-bg overflow-hidden text-white safe-areas select-none transition-colors duration-1000 ${tableColor === 'green-900' ? 'bg-green-900' : 'bg-slate-900'
             }`}>
 
+            {/* Waiting Overlay */}
+            <AnimatePresence>
+                {waitingForOpponent && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-[200] bg-black/60 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center"
+                    >
+                        <div className="space-y-6">
+                            <div className="w-20 h-20 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                            <div className="space-y-2">
+                                <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic">Esperando Oponente</h2>
+                                <p className="text-white/40 text-sm font-bold uppercase tracking-widest">Código de sala: {game.roomId}</p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* 1. Opponents Row - Fixed area */}
             <div className="w-full flex-shrink-0 flex justify-around items-start pt-2 min-h-[120px]">
-                {players.slice(1).map((p, i) => renderOpponent(p, i))}
+                {opponents.map((p, i) => renderOpponent(p, i))}
             </div>
 
             {/* 2. Central Area: Deck & Discard - Centered perfectly */}
@@ -191,7 +214,7 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                             axis="x"
                             values={me?.hand || []}
                             onReorder={onReorderHand}
-                            className="flex items-end -space-x-14 sm:-space-x-20"
+                            className="flex items-end -space-x-14 sm:-space-x-12"
                         >
                             {me?.hand.map((card) => {
                                 const inGame = showGroups && myAnalysis.games.some(g => g.some(c => c.id === card.id));

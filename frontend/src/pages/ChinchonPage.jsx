@@ -7,7 +7,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, User as UserIcon, ArrowLeft, Home, Trophy, Clock } from 'lucide-react';
+import { Users, User as UserIcon, ArrowLeft, Home, Trophy, Clock, Globe } from 'lucide-react';
 
 function ChinchonPage() {
     const [gameStarted, setGameStarted] = useState(false);
@@ -19,11 +19,12 @@ function ChinchonPage() {
 }
 
 function ChinchonContent({ gameStarted, setGameStarted }) {
-    const navigate = useNavigate();
     const [mode, setMode] = useState('single');
     const [playerCount, setPlayerCount] = useState(2);
     const [difficulty, setDifficulty] = useState('normal');
     const [playerName, setPlayerName] = useState('Emmanuel');
+    const [roomId, setRoomId] = useState('');
+    const [isJoining, setIsJoining] = useState(false);
 
     return (
         <div className="h-screen w-screen bg-green-900 overflow-hidden flex font-sans select-none">
@@ -110,21 +111,61 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
                                 <UserIcon size={18} />
                                 JUGAR VS CPU
                             </button>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                <button
+                                    onClick={() => { setMode('single'); setGameStarted(true); }}
+                                    className="flex-1 btn-primary py-4 sm:py-5 flex items-center justify-center gap-3 text-sm sm:text-base transition-all active:scale-[0.98]"
+                                >
+                                    <UserIcon size={18} />
+                                    JUGAR VS CPU
+                                </button>
                                 <button
                                     onClick={() => { setMode('local'); setGameStarted(true); }}
-                                    className="btn-secondary py-4 flex items-center justify-center gap-2 border-white/20 hover:bg-white/10 text-white/80 text-xs sm:text-sm font-bold transition-all active:scale-[0.98]"
+                                    className="flex-1 btn-secondary py-4 flex items-center justify-center gap-2 border-white/20 hover:bg-white/10 text-white/80 text-xs sm:text-sm font-bold transition-all active:scale-[0.98]"
                                 >
                                     <Users size={16} />
                                     DUELO LOCAL
                                 </button>
-                                <button
-                                    className="btn-secondary py-4 flex items-center justify-center gap-2 border-white/5 bg-white/5 text-white/20 text-xs sm:text-sm font-bold cursor-not-allowed"
-                                    title="Próximamente"
-                                >
-                                    <Clock size={16} />
-                                    ONLINE
-                                </button>
+                            </div>
+
+                            <div className="relative group">
+                                {!isJoining ? (
+                                    <button
+                                        onClick={() => setIsJoining(true)}
+                                        className="w-full py-4 sm:py-5 rounded-3xl border-2 border-yellow-500 bg-yellow-500 text-green-950 flex items-center justify-center gap-3 shadow-lg shadow-yellow-500/20 active:scale-95 transition-all text-sm sm:text-base font-black uppercase"
+                                    >
+                                        <Globe size={18} fill="currentColor" />
+                                        Multijugador Online
+                                    </button>
+                                ) : (
+                                    <motion.div
+                                        initial={{ scale: 0.9, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        className="bg-yellow-500/10 border border-yellow-500/30 rounded-3xl p-4 sm:p-6 space-y-4"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-yellow-500">Código de Sala</label>
+                                            <button onClick={() => { setIsJoining(false); setRoomId(''); }} className="text-white/40 hover:text-white text-[10px] font-bold uppercase transition-colors">Cancelar</button>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="EJ: XJ42"
+                                                value={roomId}
+                                                autoFocus
+                                                onChange={(e) => setRoomId(e.target.value.toUpperCase().slice(0, 4))}
+                                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-base font-bold outline-none ring-yellow-500/20 focus:ring-4 transition-all uppercase text-center tracking-widest"
+                                            />
+                                            <button
+                                                disabled={roomId.length < 4}
+                                                onClick={() => { setMode('multi'); setGameStarted(true); }}
+                                                className="bg-yellow-500 disabled:opacity-50 text-green-950 px-6 rounded-xl font-black text-xs transition-all uppercase tracking-widest"
+                                            >
+                                                Entrar
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
                             </div>
                         </div>
 
@@ -146,14 +187,14 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
                     </div>
                 </div>
             ) : (
-                <GameRoom mode={mode} playerCount={playerCount} difficulty={difficulty} playerName={playerName} onExit={() => setGameStarted(false)} />
+                <GameRoom mode={mode} playerCount={playerCount} difficulty={difficulty} playerName={playerName} roomId={roomId} onExit={() => setGameStarted(false)} />
             )}
         </div>
     );
 }
 
-const GameRoom = ({ mode, playerCount, difficulty, playerName, onExit }) => {
-    const game = useChinchonGame(mode, playerCount, difficulty, playerName);
+const GameRoom = ({ mode, playerCount, difficulty, playerName, roomId, onExit }) => {
+    const game = useChinchonGame(mode, playerCount, difficulty, playerName, roomId);
     const { width, height } = useWindowSize();
     const [showConfetti, setShowConfetti] = useState(false);
 
