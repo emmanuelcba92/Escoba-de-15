@@ -159,6 +159,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
             });
 
             setDiscardPile(prev => [...prev, card]);
+            setSelectedCards([]); // Limpiar selección al descartar
 
             // Log logic
             setGameLog(prev => [`${newPlayers[currentPlayerIdx].name} descartó.`, ...prev]);

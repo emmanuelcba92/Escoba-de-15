@@ -109,21 +109,50 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
             {/* 3. Player Hand Area - Fixed at bottom with absolute positioning */}
             <div className="absolute bottom-0 left-0 right-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col items-center pb-8 h-[240px] justify-end pointer-events-none">
 
-                {/* Floating Action Hint */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 pointer-events-auto">
-                    <AnimatePresence>
-                        {isMyTurn && (
+                {/* Floating Action Hint / Confirm Buttons */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex flex-col items-center gap-2">
+                    <AnimatePresence mode="wait">
+                        {isMyTurn && turnAction === 'draw' && (
                             <motion.div
-                                initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                                className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border-2 ${turnAction === 'draw' ? 'bg-yellow-500 border-yellow-400 text-green-950' : 'bg-green-500 border-green-400 text-white shadow-xl'}`}
+                                key="draw-hint"
+                                initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -10, opacity: 0 }}
+                                className="px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border-2 bg-yellow-500 border-yellow-400 text-green-950 shadow-glow"
                             >
-                                {turnAction === 'draw' ? 'Tomá una carta' : 'Tirá una carta o Cerrá'}
+                                Tomá una carta
+                            </motion.div>
+                        )}
+
+                        {isMyTurn && turnAction === 'discard' && (
+                            <motion.div
+                                key="discard-actions"
+                                initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
+                                className="flex gap-2"
+                            >
+                                {/* Button to Discard Selected Card */}
+                                {selectedCards.length === 1 && (
+                                    <button
+                                        onClick={() => onDiscardCard(selectedCards[0])}
+                                        className="px-8 py-3 bg-yellow-500 text-green-950 font-black rounded-full uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/20 animate-bounce"
+                                    >
+                                        TIRAR CARTA
+                                    </button>
+                                )}
+
+                                {/* Button to Close (if eligible) */}
+                                {myAnalysis.score < 5 && (
+                                    <button
+                                        onClick={onCloseHand}
+                                        className="px-8 py-3 bg-green-500 text-white font-black rounded-full uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/20"
+                                    >
+                                        CERRAR ({myAnalysis.score} pts)
+                                    </button>
+                                )}
                             </motion.div>
                         )}
                     </AnimatePresence>
                 </div>
 
-                {/* The Hand - Increased height and NO negative space for perfect drag detection */}
+                {/* The Hand */}
                 <div className="w-full max-w-full overflow-x-auto no-scrollbar px-4 flex justify-center items-end h-[160px] pointer-events-auto">
                     <Reorder.Group
                         axis="x"
@@ -133,6 +162,8 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     >
                         {me?.hand.map((card) => {
                             const inGame = showGroups && myAnalysis.games.some(g => g.some(c => c.id === card.id));
+                            const isSelected = selectedCards?.some(c => c.id === card.id);
+
                             return (
                                 <Reorder.Item
                                     key={card.id}
@@ -146,13 +177,13 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                                 >
                                     <div
                                         onClick={() => {
-                                            if (isMyTurn && turnAction === 'discard') onDiscardCard(card);
-                                            else onCardClick?.(card);
+                                            // Always toggle selection on click now, never discard directly
+                                            onCardClick?.(card);
                                         }}
-                                        className={`transition-all ${inGame ? 'ring-2 ring-yellow-400 rounded-lg -translate-y-6 shadow-glow-yellow' : ''} ${selectedCards?.some(c => c.id === card.id) ? '-translate-y-4' : ''}`}
+                                        className={`transition-all ${inGame ? 'ring-2 ring-yellow-400 rounded-lg -translate-y-6 shadow-glow-yellow' : ''} ${isSelected ? '-translate-y-8 ring-2 ring-blue-400 scale-105 shadow-2xl' : ''}`}
                                     >
                                         <div className="scale-95 sm:scale-100 origin-bottom">
-                                            <Card card={card} isSelected={selectedCards?.some(c => c.id === card.id)} />
+                                            <Card card={card} isSelected={isSelected} />
                                         </div>
                                     </div>
                                     {inGame && (
@@ -175,19 +206,6 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
             <div className="absolute top-2 right-2 flex flex-col items-end gap-1 opacity-20 pointer-events-none">
                 <div className="text-[10px] font-black uppercase tracking-widest bg-black/40 px-3 py-1 rounded-lg">Ronda {game.round}</div>
             </div>
-
-            {/* Close Button - Only if can close */}
-            <AnimatePresence>
-                {isMyTurn && turnAction === 'discard' && myAnalysis.score < 5 && (
-                    <motion.button
-                        initial={{ scale: 0, x: "-50%" }} animate={{ scale: 1, x: "-50%" }}
-                        onClick={onCloseHand}
-                        className="fixed bottom-40 left-1/2 px-8 py-3 bg-green-500 text-white font-black rounded-full uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/20 z-[60]"
-                    >
-                        Cerrar ({myAnalysis.score} pts)
-                    </motion.button>
-                )}
-            </AnimatePresence>
         </div>
     );
 
