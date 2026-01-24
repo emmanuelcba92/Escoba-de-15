@@ -167,6 +167,15 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                 {/* Floating Action Hint / Confirm Buttons */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex flex-col items-center gap-2">
                     <AnimatePresence mode="wait">
+                        {isMyTurn && (
+                            <motion.div
+                                initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -20, opacity: 0 }}
+                                className="mb-2 px-4 py-1 bg-yellow-500 rounded-lg text-[10px] font-black uppercase text-green-950 shadow-glow animate-bounce"
+                            >
+                                ✨ TU TURNO ✨
+                            </motion.div>
+                        )}
+
                         {isMyTurn && turnAction === 'draw' && (
                             <motion.div
                                 key="draw-hint"

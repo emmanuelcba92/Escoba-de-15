@@ -60,6 +60,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     const [myPlayerIdx, setMyPlayerIdx] = useState(0);
     const myPlayerIdxRef = useRef(0);
     const gameInitializedRef = useRef(false);
+    const myPresenceIdRef = useRef(null); // NEW: Stable Presence ID
 
     // Ref para acceso síncrono en callbacks de Supabase
     const gameStateRef = useRef(gameState);
@@ -170,8 +171,11 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
     // Supabase Multiplayer Setup
     useEffect(() => {
         if (gameMode === 'multi' && roomId) {
+            const uniqueId = `${playerName}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+            myPresenceIdRef.current = uniqueId;
+
             const channel = supabase.channel(`room_${roomId}`, {
-                config: { presence: { key: playerName } }
+                config: { presence: { key: uniqueId } }
             });
 
             channel
@@ -186,19 +190,23 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                         joinedAt: presences[0].joined_at
                     })).sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
 
-                    const myEntry = roomPlayers.find(p => p.id.startsWith(playerName + '_'));
+                    // Stable matching using generated ID
+                    const myEntry = roomPlayers.find(p => p.id === myPresenceIdRef.current);
                     const isHost = roomPlayers[0]?.id === myEntry?.id;
                     const myIdx = roomPlayers.findIndex(p => p.id === myEntry?.id);
 
+                    console.log('[Escoba] Presence sync:', { roomPlayers: roomPlayers.length, myIdx, isHost, myId: myPresenceIdRef.current });
+
                     setPlayerRole(isHost ? 'host' : 'guest');
-                    setMyPlayerIdx(myIdx);
-                    myPlayerIdxRef.current = myIdx;
+                    setMyPlayerIdx(myIdx >= 0 ? myIdx : 0);
+                    myPlayerIdxRef.current = myIdx >= 0 ? myIdx : 0;
 
                     if (roomPlayers.length >= playerCount) {
                         setGameState(prev => ({ ...prev, waitingForOpponent: false }));
                         if (isHost && !gameInitializedRef.current) {
                             gameInitializedRef.current = true;
                             const playerNames = roomPlayers.map(p => p.name);
+                            console.log('[Escoba] Host starting game with players:', playerNames);
                             setTimeout(() => startRoundMulti(playerNames, channel), 500);
                         }
                     } else {
@@ -221,7 +229,12 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
                 })
                 .subscribe(async (status) => {
                     if (status === 'SUBSCRIBED') {
-                        await channel.track({ name: playerName, joined_at: new Date().toISOString() });
+                        console.log('[Escoba] Subscribed with ID:', myPresenceIdRef.current);
+                        await channel.track({
+                            id: myPresenceIdRef.current,
+                            name: playerName,
+                            joined_at: new Date().toISOString()
+                        });
                     }
                 });
 
@@ -230,7 +243,8 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         }
     }, [gameMode, roomId, playerName, playerCount]);
 
-    const startRoundMulti = (playerNames, channel) => {
+    const startRoundMulti = (playerNames, channel, forcedRound = null) => {
+        const currentRound = forcedRound || gameStateRef.current.round;
         const realPlayers = playerNames.map((name, i) => ({
             id: `p${i + 1}`, name, hand: [], capturedCards: [], escobas: 0, score: 0, isBot: false
         }));
@@ -240,7 +254,7 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         realPlayers.forEach(p => { p.hand = newDeck.splice(0, 3); });
 
         const { escobas, remaining } = findInitialEscobas(initialTableCards);
-        let initialMsgs = [`Ronda ${gameStateRef.current.round} iniciada.`];
+        let initialMsgs = [`Ronda ${currentRound} iniciada.`];
         let lastCap = null;
 
         if (escobas.length > 0) {
@@ -255,8 +269,9 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
             table: remaining,
             players: realPlayers,
             currentPlayerIdx: 0,
-            dealerIdx: 0,
-            lastCapturerIdx: lastCap
+            dealerIdx: (gameStateRef.current.dealerIdx + 1) % playerCount,
+            lastCapturerIdx: lastCap,
+            round: currentRound
         };
 
         channel.send({ type: 'broadcast', event: 'init_game', payload });
@@ -418,6 +433,15 @@ export const useGame = (gameMode = 'single', difficulty = 'normal', playerCount 
         },
         onSoplo: () => {
             if (checkTableSum15(selectedTableCards)) processSoplo(gameMode === 'multi' ? myPlayerIdx : currentPlayerIdx, selectedTableCards);
+        },
+        nextRound: () => {
+            const nextR = round + 1;
+            if (gameMode === 'multi' && playerRole === 'host') {
+                const pNames = players.map(p => p.name);
+                startRoundMulti(pNames, channelRef.current, nextR);
+            } else {
+                setGameState(prev => ({ ...prev, round: nextR, gamePhase: 'setup' }));
+            }
         },
         deckSize: deck.length,
         myPlayerIdx

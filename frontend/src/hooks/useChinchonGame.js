@@ -29,6 +29,8 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
     const channelRef = useRef(null);
     const myPlayerIdxRef = useRef(0);
     const gameStateRef = useRef(gameState);
+    const gameInitializedRef = useRef(false);  // NEW: Prevent duplicate initialization
+    const myPresenceIdRef = useRef(null);      // NEW: Store stable presence ID
 
     // Sincronizar ref con estado para callbacks de Supabase
     useEffect(() => {
@@ -60,13 +62,14 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
         return p;
     }, [playerCount, gameMode, playerName]);
 
-    const startRoundMulti = (playerNames, channel) => {
+    const startRoundMulti = (playerNames, channel, forcedRound = null) => {
         const initialPlayers = createPlayers(playerNames);
+        const currentRound = forcedRound || gameStateRef.current.round;
 
         let baseDeck = createChinchonDeck();
         let newDeck = shuffleDeck(baseDeck).map(c => ({
             ...c,
-            id: `r${gameStateRef.current.round}-${c.id}`
+            id: `r${currentRound}-${c.id}`
         }));
 
         const updatedPlayers = initialPlayers.map(p => ({
@@ -84,7 +87,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
             discardPile: [firstDiscard],
             players: updatedPlayers,
             currentPlayerIdx: 0,
-            round: gameStateRef.current.round,
+            round: currentRound,
             gamePhase: 'playing',
             turnAction: 'draw'
         };
@@ -98,15 +101,18 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
         setGameState(prev => ({
             ...prev,
             ...payload,
-            gameLog: [`Ronda ${prev.round} iniciada.`, ...prev.gameLog]
+            gameLog: [`Ronda ${currentRound} iniciada.`, ...prev.gameLog]
         }));
     };
 
     // Supabase Multiplayer Setup
     useEffect(() => {
         if (gameMode === 'multi' && roomId) {
+            const uniqueId = `${playerName}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+            myPresenceIdRef.current = uniqueId;
+
             const channel = supabase.channel(`chinchon_${roomId}`, {
-                config: { presence: { key: playerName } }
+                config: { presence: { key: uniqueId } }
             });
 
             channel
@@ -121,19 +127,25 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
                         joinedAt: presences[0].joined_at
                     })).sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
 
-                    const myEntry = roomPlayers.find(p => p.id.startsWith(playerName + '_'));
+                    // Use stable presence ID for matching
+                    const myEntry = roomPlayers.find(p => p.id === myPresenceIdRef.current);
                     const isHost = roomPlayers[0]?.id === myEntry?.id;
                     const myIdx = roomPlayers.findIndex(p => p.id === myEntry?.id);
 
+                    console.log('[Chinchón] Presence sync:', { roomPlayers: roomPlayers.length, myIdx, isHost, myId: myPresenceIdRef.current });
+
                     setPlayerRole(isHost ? 'host' : 'guest');
-                    setMyPlayerIdx(myIdx);
-                    myPlayerIdxRef.current = myIdx;
+                    setMyPlayerIdx(myIdx >= 0 ? myIdx : 0);
+                    myPlayerIdxRef.current = myIdx >= 0 ? myIdx : 0;
 
                     if (roomPlayers.length >= playerCount) {
                         setWaitingForOpponent(false);
-                        if (isHost && gameStateRef.current.gamePhase === 'setup') {
+                        // NEW: Use gameInitializedRef to prevent duplicate starts
+                        if (isHost && gameStateRef.current.gamePhase === 'setup' && !gameInitializedRef.current) {
+                            gameInitializedRef.current = true;
                             const playerNames = roomPlayers.map(p => p.name);
-                            setTimeout(() => startRoundMulti(playerNames, channel), 1000);
+                            console.log('[Chinchón] Host initializing game with players:', playerNames);
+                            setTimeout(() => startRoundMulti(playerNames, channel), 800);
                         }
                     } else {
                         setWaitingForOpponent(true);
@@ -160,7 +172,9 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
                 })
                 .subscribe(async (status) => {
                     if (status === 'SUBSCRIBED') {
+                        console.log('[Chinchón] Subscribed with ID:', myPresenceIdRef.current);
                         await channel.track({
+                            id: myPresenceIdRef.current,
                             name: playerName,
                             joined_at: new Date().toISOString()
                         });
@@ -474,11 +488,12 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
             players: prev.players.map((p, i) => i === myPlayerIdx ? { ...p, hand: newHand } : p)
         })),
         nextRound: () => {
-            setGameState(prev => ({ ...prev, round: prev.round + 1 }));
+            const nextR = gameState.round + 1;
             if (gameMode === 'multi' && playerRole === 'host') {
                 const playerNames = players.map(p => p.name);
-                startRoundMulti(playerNames, channelRef.current);
+                startRoundMulti(playerNames, channelRef.current, nextR);
             } else {
+                setGameState(prev => ({ ...prev, round: nextR }));
                 startRound();
             }
         },
