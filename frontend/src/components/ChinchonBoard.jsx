@@ -106,8 +106,8 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                 </motion.div>
             </div>
 
-            {/* 3. Player Hand Area - Fixed at bottom with absolute positioning */}
-            <div className="absolute bottom-0 left-0 right-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col items-center pb-8 h-[240px] justify-end pointer-events-none">
+            {/* 3. Player Hand Area - Increased height to 320px to prevent clipping */}
+            <div className="absolute bottom-0 left-0 right-0 w-full bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col items-center pb-8 h-[320px] justify-end pointer-events-none">
 
                 {/* Floating Action Hint / Confirm Buttons */}
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex flex-col items-center gap-2">
@@ -128,23 +128,23 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                                 initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}
                                 className="flex gap-2"
                             >
-                                {/* Button to Discard Selected Card */}
+                                {/* Discard Selected Card */}
                                 {selectedCards.length === 1 && (
                                     <button
                                         onClick={() => onDiscardCard(selectedCards[0])}
-                                        className="px-8 py-3 bg-yellow-500 text-green-950 font-black rounded-full uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/20 animate-bounce"
+                                        className="px-6 py-3 bg-white text-green-950 font-black rounded-2xl uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/10"
                                     >
-                                        TIRAR CARTA
+                                        TIRAR
                                     </button>
                                 )}
 
-                                {/* Button to Close (if eligible) */}
-                                {myAnalysis.score < 5 && (
+                                {/* Close Hand with Selected Card as Discard */}
+                                {selectedCards.length === 1 && (
                                     <button
-                                        onClick={onCloseHand}
-                                        className="px-8 py-3 bg-green-500 text-white font-black rounded-full uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/20"
+                                        onClick={() => onCloseHand(selectedCards[0])}
+                                        className="px-6 py-3 bg-yellow-500 text-green-950 font-black rounded-2xl uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/10"
                                     >
-                                        CERRAR ({myAnalysis.score} pts)
+                                        CERRAR CON ESTA
                                     </button>
                                 )}
                             </motion.div>
@@ -152,13 +152,13 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     </AnimatePresence>
                 </div>
 
-                {/* The Hand */}
-                <div className="w-full max-w-full overflow-x-auto no-scrollbar px-4 flex justify-center items-end h-[160px] pointer-events-auto">
+                {/* The Hand - Overlap and Scaling */}
+                <div className="w-full max-w-full overflow-x-auto no-scrollbar px-2 flex justify-center items-end h-[220px] pointer-events-auto">
                     <Reorder.Group
                         axis="x"
                         values={me?.hand || []}
                         onReorder={onReorderHand}
-                        className="flex items-end justify-center gap-2 sm:gap-4 pb-4 px-10"
+                        className="flex items-end justify-center -space-x-8 sm:-space-x-12 pb-6 px-10"
                     >
                         {me?.hand.map((card) => {
                             const inGame = showGroups && myAnalysis.games.some(g => g.some(c => c.id === card.id));
@@ -170,24 +170,21 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                                     value={card}
                                     dragListener={gamePhase === 'playing'}
                                     layout
-                                    transition={{ type: "spring", stiffness: 600, damping: 50 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
                                     whileDrag={{ scale: 1.1, zIndex: 100 }}
                                     className="relative flex-shrink-0 active:cursor-grabbing"
                                     style={{ touchAction: "none" }}
                                 >
                                     <div
-                                        onClick={() => {
-                                            // Always toggle selection on click now, never discard directly
-                                            onCardClick?.(card);
-                                        }}
-                                        className={`transition-all ${inGame ? 'ring-2 ring-yellow-400 rounded-lg -translate-y-6 shadow-glow-yellow' : ''} ${isSelected ? '-translate-y-8 ring-2 ring-blue-400 scale-105 shadow-2xl' : ''}`}
+                                        onClick={() => onCardClick?.(card)}
+                                        className={`transition-all duration-300 ${inGame ? 'ring-2 ring-yellow-400 rounded-lg -translate-y-10 shadow-glow-yellow' : ''} ${isSelected ? '-translate-y-20 ring-2 ring-blue-400 scale-110 z-50 shadow-2xl' : ''}`}
                                     >
-                                        <div className="scale-95 sm:scale-100 origin-bottom">
+                                        <div className="scale-[0.7] sm:scale-100 origin-bottom">
                                             <Card card={card} isSelected={isSelected} />
                                         </div>
                                     </div>
                                     {inGame && (
-                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 w-2.5 h-2.5 rounded-full shadow-glow-yellow" />
+                                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 w-2 h-2 rounded-full shadow-glow-yellow" />
                                     )}
                                 </Reorder.Item>
                             );
@@ -197,8 +194,8 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
 
                 {/* Score Footer */}
                 <div className="mt-2 flex gap-12 text-[10px] font-black uppercase text-white/40 pointer-events-auto">
-                    <span>Sueltas: <span className="text-white">{myAnalysis.score}</span></span>
-                    <span>Total: <span className="text-white">{me?.totalScore || 0}</span></span>
+                    <span>Sueltas: <span className="text-white text-xs">{myAnalysis.score}</span></span>
+                    <span>Total: <span className="text-white text-xs">{me?.totalScore || 0}</span></span>
                 </div>
             </div>
 

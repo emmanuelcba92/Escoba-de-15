@@ -22,6 +22,7 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
     const [mode, setMode] = useState('single');
     const [playerCount, setPlayerCount] = useState(2);
     const [difficulty, setDifficulty] = useState('normal');
+    const [playerName, setPlayerName] = useState('Emmanuel');
 
     return (
         <div className="h-screen w-screen bg-green-900 overflow-hidden flex font-sans select-none">
@@ -47,6 +48,19 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 sm:gap-6 w-full relative z-10">
+                        {/* Player Name */}
+                        <div className="space-y-2">
+                            <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/40 ml-1">Tu Nombre</label>
+                            <input
+                                type="text"
+                                value={playerName}
+                                onChange={(e) => setPlayerName(e.target.value)}
+                                placeholder="Escribí tu nombre..."
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none focus:border-yellow-500/50 transition-all"
+                                maxLength={12}
+                            />
+                        </div>
+
                         {/* Player Count */}
                         <div className="space-y-2">
                             <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/40 ml-1">Participantes</label>
@@ -67,9 +81,9 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
                             </div>
                         </div>
 
-                        {/* Difficulty selector (show only in single player) */}
+                        {/* Difficulty selector */}
                         <div className="space-y-2">
-                            <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/40 ml-1">Dificultad</label>
+                            <label className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white/40 ml-1">Dificultad (CPU)</label>
                             <div className="grid grid-cols-3 gap-2">
                                 {['easy', 'normal', 'hard'].map((d) => (
                                     <button
@@ -93,15 +107,24 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
                                 className="btn-primary py-4 sm:py-5 flex items-center justify-center gap-3 text-sm sm:text-base transition-all active:scale-[0.98]"
                             >
                                 <UserIcon size={18} />
-                                VS CPU
+                                JUGAR VS CPU
                             </button>
-                            <button
-                                onClick={() => { setMode('local'); setGameStarted(true); }}
-                                className="btn-secondary py-4 sm:py-5 flex items-center justify-center gap-3 border-white/20 hover:bg-white/10 text-white/80 text-sm sm:text-base transition-all active:scale-[0.98]"
-                            >
-                                <Users size={18} />
-                                MULTIJUGADOR LOCAL
-                            </button>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => { setMode('local'); setGameStarted(true); }}
+                                    className="btn-secondary py-4 flex items-center justify-center gap-2 border-white/20 hover:bg-white/10 text-white/80 text-xs sm:text-sm font-bold transition-all active:scale-[0.98]"
+                                >
+                                    <Users size={16} />
+                                    DUELO LOCAL
+                                </button>
+                                <button
+                                    className="btn-secondary py-4 flex items-center justify-center gap-2 border-white/5 bg-white/5 text-white/20 text-xs sm:text-sm font-bold cursor-not-allowed"
+                                    title="Próximamente"
+                                >
+                                    <Clock size={16} />
+                                    ONLINE
+                                </button>
+                            </div>
                         </div>
 
                         {/* Info Box */}
@@ -122,14 +145,14 @@ function ChinchonContent({ gameStarted, setGameStarted }) {
                     </div>
                 </div>
             ) : (
-                <GameRoom mode={mode} playerCount={playerCount} difficulty={difficulty} onExit={() => setGameStarted(false)} />
+                <GameRoom mode={mode} playerCount={playerCount} difficulty={difficulty} playerName={playerName} onExit={() => setGameStarted(false)} />
             )}
         </div>
     );
 }
 
-const GameRoom = ({ mode, playerCount, difficulty, onExit }) => {
-    const game = useChinchonGame(mode, playerCount, difficulty);
+const GameRoom = ({ mode, playerCount, difficulty, playerName, onExit }) => {
+    const game = useChinchonGame(mode, playerCount, difficulty, playerName);
     const { width, height } = useWindowSize();
     const [showConfetti, setShowConfetti] = useState(false);
 
@@ -140,22 +163,46 @@ const GameRoom = ({ mode, playerCount, difficulty, onExit }) => {
         }
     }, [game.gamePhase]);
 
-    useEffect(() => {
-        if (game.gameLog.length > 0) {
-            const lastMsg = game.gameLog[0];
-            if (lastMsg.includes('ganó') || lastMsg.includes('CHINCHÓN')) {
-                setShowConfetti(true);
-                const timer = setTimeout(() => setShowConfetti(false), 5000);
-                return () => clearTimeout(timer);
-            }
-        }
-    }, [game.gameLog]);
-
     return (
         <>
             {showConfetti && <Confetti width={width} height={height} numberOfPieces={200} recycle={false} />}
 
             <div className="flex-1 h-full relative">
+
+                {/* 1. Turn Transition Modal (Pass the phone) */}
+                <AnimatePresence>
+                    {game.gamePhase === 'turnTransition' && (
+                        <motion.div
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-[150] bg-green-950 flex flex-col items-center justify-center p-8 text-center"
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }}
+                                className="space-y-8"
+                            >
+                                <div className="space-y-4">
+                                    <h2 className="text-white/40 font-black uppercase tracking-[0.3em] text-sm italic">Cambio de Turno</h2>
+                                    <h3 className="text-5xl sm:text-7xl text-white font-black tracking-tighter uppercase text-glow">
+                                        Es el turno de<br />
+                                        <span className="text-yellow-500">{game.players[game.currentPlayerIdx]?.name}</span>
+                                    </h3>
+                                </div>
+
+                                <p className="text-white/60 text-lg sm:text-2xl font-medium max-w-sm mx-auto">
+                                    ¡Pasale el dispositivo para que nadie vea tus cartas! 📱🤫
+                                </p>
+
+                                <button
+                                    onClick={game.startTurn}
+                                    className="px-12 py-5 bg-white text-green-950 font-black rounded-3xl uppercase tracking-widest text-lg shadow-2xl hover:scale-105 active:scale-95 transition-all ring-8 ring-white/10"
+                                >
+                                    ¡ESTOY LISTO!
+                                </button>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {/* Header Buttons */}
                 <div className="absolute top-4 left-4 sm:top-6 sm:left-6 z-50 flex items-center gap-2">
                     <button

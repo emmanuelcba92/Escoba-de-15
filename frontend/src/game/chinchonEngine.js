@@ -307,3 +307,37 @@ export const canAddToGame = (card, game) => {
     const testGame = [...game, card];
     return isValidRun(testGame) || isValidSet(testGame);
 };
+
+/**
+ * Crea un mazo de Chinchón (40 cartas españolas + 2 comodines)
+ */
+export const createChinchonDeck = () => {
+    const suits = ['oros', 'copas', 'espadas', 'bastos'];
+    const values = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 8, 9]; // Incluimos 8 y 9 para Chinchón (aunque a veces se juega sin ellos, usaremos el estándar de 48 si es necesario o 40+2)
+    // El chinchón estándar usa 48 cartas o 40+2. Usaremos 48 cartas (12 por palo) + 2 comodines.
+
+    const deck = [];
+    let id = 1;
+    for (const suit of suits) {
+        for (const value of values) {
+            deck.push({ id: id++, suit, value, isJoker: false });
+        }
+    }
+    // Comodines
+    deck.push({ id: id++, suit: 'joker', value: 1, isJoker: true });
+    deck.push({ id: id++, suit: 'joker', value: 2, isJoker: true });
+
+    return deck;
+};
+
+/**
+ * Mezcla un mazo usando el algoritmo Fisher-Yates
+ */
+export const shuffleDeck = (deck) => {
+    const newDeck = [...deck];
+    for (let i = newDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newDeck[i], newDeck[j]] = [newDeck[j], newDeck[i]];
+    }
+    return newDeck;
+};
