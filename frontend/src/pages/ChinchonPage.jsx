@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useChinchonGame } from '../hooks/useChinchonGame';
 import ChinchonBoard from '../components/ChinchonBoard';
+import ChinchonResultsModal from '../components/ChinchonResultsModal';
 import ErrorBoundary from '../components/ErrorBoundary';
 import Confetti from 'react-confetti';
 import { useWindowSize } from 'react-use';
@@ -219,45 +220,14 @@ const GameRoom = ({ mode, playerCount, difficulty, playerName, onExit }) => {
                     </Link>
                 </div>
 
-                {/* Round End Modal */}
-                <AnimatePresence>
-                    {game.gamePhase === 'roundEnd' && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="absolute inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-                        >
-                            <motion.div
-                                initial={{ scale: 0.9, y: 20 }}
-                                animate={{ scale: 1, y: 0 }}
-                                className="bg-green-950/90 border border-white/20 rounded-[32px] p-8 max-w-md w-full text-center shadow-2xl"
-                            >
-                                <h2 className="text-3xl font-black text-white mb-6">Ronda {game.round} Finalizada</h2>
-                                <div className="space-y-3 mb-8">
-                                    {game.players.map(p => (
-                                        <div key={p.id} className={`p-4 rounded-xl ${p.isEliminated ? 'bg-red-500/20 border border-red-500/50' : 'bg-white/5'}`}>
-                                            <div className="flex justify-between items-center">
-                                                <span className="font-bold text-white">{p.name}</span>
-                                                <div className="flex gap-4 text-sm">
-                                                    <span className="text-white/60">Ronda: <span className="text-white font-bold">{p.roundScore}</span></span>
-                                                    <span className="text-white/60">Total: <span className={`font-bold ${p.totalScore >= 80 ? 'text-red-400' : 'text-white'}`}>{p.totalScore}</span></span>
-                                                </div>
-                                            </div>
-                                            {p.isEliminated && <p className="text-red-400 text-xs mt-1 font-bold">¡ELIMINADO!</p>}
-                                        </div>
-                                    ))}
-                                </div>
-                                <button
-                                    onClick={game.nextRound}
-                                    className="w-full py-4 rounded-2xl font-bold uppercase tracking-widest bg-yellow-500 text-green-950 hover:bg-yellow-400 transition-all shadow-lg"
-                                >
-                                    Siguiente Ronda
-                                </button>
-                            </motion.div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* Round End Modal (Premium) */}
+                <ChinchonResultsModal
+                    isOpen={game.gamePhase === 'roundEnd'}
+                    players={game.players}
+                    closingPlayerIdx={game.closingPlayerIdx}
+                    round={game.round}
+                    onNextRound={game.nextRound}
+                />
 
                 {/* Game End Modal */}
                 <AnimatePresence>
@@ -304,6 +274,7 @@ const GameRoom = ({ mode, playerCount, difficulty, playerName, onExit }) => {
                     onCloseHand={game.closeHand}
                     onCardClick={game.toggleCardSelection}
                     onReorderHand={game.reorderHand}
+                    onAutoSort={game.autoSortHand}
                 />
             </div>
         </>

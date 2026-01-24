@@ -163,7 +163,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
             const cleanDeck = prev.deck.filter(c => c.id !== card.id);
             const cleanDiscard = prev.discardPile.filter(c => c.id !== card.id);
 
-            // Logica de turno
+            // Turn logic
             let nextIdx = (prev.currentPlayerIdx + 1) % playerCount;
             let guard = 0;
             while (newPlayers[nextIdx]?.isEliminated && guard < playerCount) {
@@ -190,6 +190,25 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
         setSelectedCards([]);
     }, [turnAction, gamePhase, gameMode, playerCount]);
 
+    // Ordenar automáticamente la mano del jugador actual
+    const autoSortHand = useCallback(() => {
+        setGameState(prev => {
+            const player = prev.players[prev.currentPlayerIdx];
+            if (!player || player.isBot) return prev;
+
+            const analysis = findBestCombination(player.hand);
+            // Reordenar: cartas de juegos primero, luego las sueltas
+            const newHand = [...analysis.games.flat(), ...analysis.looseCards];
+
+            return {
+                ...prev,
+                players: prev.players.map((p, i) =>
+                    i === prev.currentPlayerIdx ? { ...p, hand: newHand } : p
+                )
+            };
+        });
+    }, []);
+
     const closeHand = useCallback((discardCard) => {
         if (turnAction !== 'discard' || gamePhase !== 'playing' || processingAction.current) return;
 
@@ -199,7 +218,11 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
 
         if (!canClose(handAfterDiscard, analysis.games, analysis.looseCards)) {
             if (currentPlayerIdx === 0) {
-                alert('No podés cerrar con esta combinación. Necesitás que las 7 cartas restantes formen juegos o máximo 1 carta suelta menor a 3.');
+                // Notificar error de cierre
+                setGameState(prev => ({
+                    ...prev,
+                    gameLog: ['No podés cerrar con esa mano.', ...prev.gameLog]
+                }));
             }
             return;
         }
@@ -217,11 +240,12 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
                 discardPile: [...prev.discardPile.filter(c => c.id !== discardCard.id), discardCard],
                 closingPlayerIdx: prev.currentPlayerIdx,
                 gamePhase: 'showing',
-                gameLog: [`${prev.players[prev.currentPlayerIdx].name} cerró la mano descartando el ${discardCard.value} de ${discardCard.suit}.`, ...prev.gameLog]
+                gameLog: [`¡${prev.players[prev.currentPlayerIdx].name} CERRÓ!`, ...prev.gameLog]
             };
         });
 
-        setTimeout(() => calculateRoundScores(), 1500);
+        // Esperar un momento para mostrar la carta tirada antes de calcular
+        setTimeout(() => calculateRoundScores(), 2000);
     }, [turnAction, gamePhase, players, currentPlayerIdx]);
 
     const calculateRoundScores = useCallback(() => {
@@ -243,6 +267,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
                 let currentLoose = analysis.looseCards;
                 let currentGames = analysis.games;
 
+                // Intentar acomodar cartas en el juego del que cerró
                 if (idx !== winnerIdx && winnerGames.length > 0) {
                     const winnerGamesCopy = winnerGames.map(g => [...g]);
                     const { newLooseCards } = tryToAppendCards([...currentLoose], winnerGamesCopy);
@@ -250,9 +275,11 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
                 }
 
                 const score = calculateScore(currentGames, currentLoose, idx === winnerIdx);
+
+                // Chinchón perfecto (-1000 es victoria automática)
                 if (score === -1000) {
                     nextPhase = 'gameEnd';
-                    return { ...p, games: currentGames, looseCards: currentLoose, roundScore: 0, totalScore: 0, wonGame: true };
+                    return { ...p, wonGame: true, roundScore: -100, totalScore: -100 };
                 }
 
                 const newTotal = p.totalScore + score;
@@ -266,16 +293,15 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
                 };
             });
 
-            if (nextPhase === 'gameEnd') {
-                const winnerPlayer = updatedPlayers.find(p => p.wonGame);
-                updatedLog = [`¡${winnerPlayer.name} hizo CHINCHÓN y ganó!`, ...updatedLog];
-            }
+            // Verificar si queda solo un jugador
+            const alivePlayers = updatedPlayers.filter(p => !p.isEliminated);
+            if (alivePlayers.length <= 1) nextPhase = 'gameEnd';
 
             return {
                 ...prev,
                 players: updatedPlayers,
                 gamePhase: nextPhase,
-                gameLog: updatedLog
+                gameLog: [`Puntajes actualizados.`, ...updatedLog]
             };
         });
     }, []);
@@ -306,6 +332,7 @@ export const useChinchonGame = (gameMode = 'single', playerCount = 2, difficulty
         drawCard,
         discardCard,
         closeHand,
+        autoSortHand,
         startTurn,
         reorderHand: (newHand) => setGameState(prev => ({
             ...prev,

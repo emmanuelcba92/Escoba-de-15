@@ -1,18 +1,49 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import Card from './Card';
-import { X, Check, Sparkles, GripHorizontal, Trophy } from 'lucide-react';
+import { X, Check, Sparkles, GripHorizontal, Trophy, Palette, Wand2 } from 'lucide-react';
 import { findBestCombination } from '../game/chinchonEngine';
 
-const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardClick, onReorderHand }) => {
+// Audio helper
+const playSound = (type) => {
+    const sounds = {
+        draw: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3',
+        discard: 'https://assets.mixkit.co/active_storage/sfx/2014/2014-preview.mp3',
+        close: 'https://assets.mixkit.co/active_storage/sfx/2010/2010-preview.mp3'
+    };
+    const audio = new Audio(sounds[type]);
+    audio.volume = 0.4;
+    audio.play().catch(() => { }); // Ignore interaction errors
+};
+
+const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardClick, onReorderHand, onAutoSort }) => {
     const { players, currentPlayerIdx, discardPile, deckSize, turnAction, gamePhase, selectedCards } = game;
     const [showGroups, setShowGroups] = useState(true);
+    const [tableColor, setTableColor] = useState('green-900'); // green-900 or slate-900
 
     const me = players[0];
     const isMyTurn = currentPlayerIdx === 0 && gamePhase === 'playing';
 
     // Análisis de mi mano para mostrar sugerencias sin mover el orden real
     const myAnalysis = useMemo(() => findBestCombination(me?.hand || []), [me?.hand]);
+
+    // Sonidos reactivos
+    useEffect(() => {
+        if (gamePhase === 'playing') {
+            if (turnAction === 'discard') playSound('draw');
+        } else if (gamePhase === 'showing') {
+            playSound('close');
+        }
+    }, [turnAction, gamePhase]);
+
+    const handleDiscard = (card) => {
+        playSound('discard');
+        onDiscardCard(card);
+    };
+
+    const handleDraw = (fromDeck) => {
+        onDrawCard(fromDeck);
+    };
 
     // Función para renderizar el grupo de oponentes
     const renderOpponent = (player, idx) => {
@@ -64,7 +95,8 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
     };
 
     return (
-        <div className="h-full w-full flex flex-col items-center relative felt-bg overflow-hidden text-white safe-areas select-none">
+        <div className={`h-full w-full flex flex-col items-center relative felt-bg overflow-hidden text-white safe-areas select-none transition-colors duration-1000 ${tableColor === 'green-900' ? 'bg-green-900' : 'bg-slate-900'
+            }`}>
 
             {/* 1. Opponents Row - Fixed area */}
             <div className="w-full flex-shrink-0 flex justify-around items-start pt-2 min-h-[120px]">
@@ -74,8 +106,8 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
             {/* 2. Central Area: Deck & Discard - Centered perfectly */}
             <div className="flex-1 w-full flex items-center justify-center gap-8 sm:gap-16">
                 <motion.div
-                    onClick={() => isMyTurn && turnAction === 'draw' && onDrawCard(true)}
-                    className={`relative ${isMyTurn && turnAction === 'draw' ? 'cursor-pointer' : 'opacity-50'} card-responsive`}
+                    onClick={() => isMyTurn && turnAction === 'draw' && handleDraw(true)}
+                    className={`relative ${isMyTurn && turnAction === 'draw' ? 'cursor-pointer hover:scale-105 active:scale-95 transition-all' : 'opacity-50'} card-responsive`}
                 >
                     <div className="scale-75 sm:scale-100">
                         <Card card={{}} hidden={true} />
@@ -86,8 +118,8 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                 </motion.div>
 
                 <motion.div
-                    onClick={() => isMyTurn && turnAction === 'draw' && discardPile.length > 0 && onDrawCard(false)}
-                    className={`relative ${isMyTurn && turnAction === 'draw' && discardPile.length > 0 ? 'cursor-pointer' : 'opacity-50'} card-responsive`}
+                    onClick={() => isMyTurn && turnAction === 'draw' && discardPile.length > 0 && handleDraw(false)}
+                    className={`relative ${isMyTurn && turnAction === 'draw' && discardPile.length > 0 ? 'cursor-pointer hover:scale-105 active:scale-95 transition-all' : 'opacity-50'} card-responsive`}
                 >
                     <div className="scale-75 sm:scale-100">
                         {discardPile.length > 0 ? (
@@ -131,8 +163,8 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                                 {/* Discard Selected Card */}
                                 {selectedCards.length === 1 && (
                                     <button
-                                        onClick={() => onDiscardCard(selectedCards[0])}
-                                        className="px-6 py-3 bg-white text-green-950 font-black rounded-2xl uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/10"
+                                        onClick={() => handleDiscard(selectedCards[0])}
+                                        className="px-6 py-3 bg-white text-green-950 font-black rounded-2xl uppercase tracking-tighter text-xs shadow-2xl ring-4 ring-white/10 hover:bg-white/90 active:scale-95 transition-all"
                                     >
                                         TIRAR
                                     </button>
@@ -201,9 +233,28 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                 </div>
             </div>
 
-            {/* Float Info */}
-            <div className="absolute top-2 right-2 flex flex-col items-end gap-1 opacity-20 pointer-events-none">
-                <div className="text-[10px] font-black uppercase tracking-widest bg-black/40 px-3 py-1 rounded-lg">Ronda {game.round}</div>
+            {/* Round & Settings Controls */}
+            <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-50 flex items-center gap-2">
+                {/* Auto Sort Button */}
+                <button
+                    onClick={() => { playSound('draw'); onAutoSort(); }}
+                    className="text-white/60 hover:text-white transition-all font-bold text-[10px] sm:text-xs bg-black/40 px-3 py-2 rounded-xl backdrop-blur-md border border-white/10 flex items-center gap-2"
+                >
+                    <Wand2 size={16} className="text-yellow-400" />
+                    AUTOSORT
+                </button>
+
+                {/* Table Color Toggle */}
+                <button
+                    onClick={() => setTableColor(prev => prev === 'green-900' ? 'slate-900' : 'green-900')}
+                    className="text-white/60 hover:text-white transition-all font-bold text-[10px] sm:text-xs bg-black/40 p-2 rounded-xl backdrop-blur-md border border-white/10"
+                >
+                    <Palette size={16} />
+                </button>
+
+                <div className="text-[10px] font-black uppercase tracking-widest bg-yellow-500 text-green-950 px-3 py-2 rounded-xl shadow-lg">
+                    Ronda {game.round}
+                </div>
             </div>
         </div>
     );
