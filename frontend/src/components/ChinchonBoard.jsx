@@ -152,44 +152,46 @@ const ChinchonBoard = ({ game, onDrawCard, onDiscardCard, onCloseHand, onCardCli
                     </AnimatePresence>
                 </div>
 
-                {/* The Hand - Overlap and Scaling */}
-                <div className="w-full max-w-full overflow-x-auto no-scrollbar px-2 flex justify-center items-end h-[220px] pointer-events-auto">
-                    <Reorder.Group
-                        axis="x"
-                        values={me?.hand || []}
-                        onReorder={onReorderHand}
-                        className="flex items-end justify-center -space-x-8 sm:-space-x-12 pb-6 px-10"
-                    >
-                        {me?.hand.map((card) => {
-                            const inGame = showGroups && myAnalysis.games.some(g => g.some(c => c.id === card.id));
-                            const isSelected = selectedCards?.some(c => c.id === card.id);
+                {/* The Hand - Fixed centering and overflow for 8 cards */}
+                <div className="w-full max-w-full overflow-x-auto no-scrollbar pointer-events-auto flex justify-center">
+                    <div className="min-w-max flex items-end px-12 h-[220px] pb-6">
+                        <Reorder.Group
+                            axis="x"
+                            values={me?.hand || []}
+                            onReorder={onReorderHand}
+                            className="flex items-end -space-x-10 sm:-space-x-14"
+                        >
+                            {me?.hand.map((card) => {
+                                const inGame = showGroups && myAnalysis.games.some(g => g.some(c => c.id === card.id));
+                                const isSelected = selectedCards?.some(c => c.id === card.id);
 
-                            return (
-                                <Reorder.Item
-                                    key={card.id}
-                                    value={card}
-                                    dragListener={gamePhase === 'playing'}
-                                    layout
-                                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                                    whileDrag={{ scale: 1.1, zIndex: 100 }}
-                                    className="relative flex-shrink-0 active:cursor-grabbing"
-                                    style={{ touchAction: "none" }}
-                                >
-                                    <div
-                                        onClick={() => onCardClick?.(card)}
-                                        className={`transition-all duration-300 ${inGame ? 'ring-2 ring-yellow-400 rounded-lg -translate-y-10 shadow-glow-yellow' : ''} ${isSelected ? '-translate-y-20 ring-2 ring-blue-400 scale-110 z-50 shadow-2xl' : ''}`}
+                                return (
+                                    <Reorder.Item
+                                        key={card.id}
+                                        value={card}
+                                        dragListener={gamePhase === 'playing'}
+                                        layout
+                                        transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                                        whileDrag={{ scale: 1.1, zIndex: 100 }}
+                                        className="relative flex-shrink-0 active:cursor-grabbing"
+                                        style={{ touchAction: "none" }}
                                     >
-                                        <div className="scale-[0.7] sm:scale-100 origin-bottom">
-                                            <Card card={card} isSelected={isSelected} />
+                                        <div
+                                            onClick={() => onCardClick?.(card)}
+                                            className={`transition-all duration-300 ${inGame ? 'ring-2 ring-yellow-400 rounded-lg -translate-y-10 shadow-glow-yellow' : ''} ${isSelected ? '-translate-y-20 ring-2 ring-blue-400 scale-110 z-50 shadow-2xl' : ''}`}
+                                        >
+                                            <div className="scale-[0.75] sm:scale-110 origin-bottom">
+                                                <Card card={card} isSelected={isSelected} />
+                                            </div>
                                         </div>
-                                    </div>
-                                    {inGame && (
-                                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 w-2 h-2 rounded-full shadow-glow-yellow" />
-                                    )}
-                                </Reorder.Item>
-                            );
-                        })}
-                    </Reorder.Group>
+                                        {inGame && (
+                                            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 w-2 h-2 rounded-full shadow-glow-yellow" />
+                                        )}
+                                    </Reorder.Item>
+                                );
+                            })}
+                        </Reorder.Group>
+                    </div>
                 </div>
 
                 {/* Score Footer */}
