@@ -18,15 +18,10 @@ body {
   background-color: var(--felt-green);
   color: white;
   overflow: hidden;
-  /* Prevent scrolling */
-  overscroll-behavior: none;
-  /* Prevent elastic scrolling */
-  user-select: none;
-  /* Prevent text selection */
-  -webkit-touch-callout: none;
+  height: 100dvh;
   width: 100vw;
-  height: 100vh;
   position: fixed;
+  touch-action: none;
 }
 
 #root {
