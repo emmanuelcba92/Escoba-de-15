@@ -19,6 +19,7 @@ function ChinchonPage() {
 }
 
 function ChinchonContent({ gameStarted, setGameStarted }) {
+    const navigate = useNavigate();
     const [mode, setMode] = useState('single');
     const [playerCount, setPlayerCount] = useState(2);
     const [difficulty, setDifficulty] = useState('normal');
